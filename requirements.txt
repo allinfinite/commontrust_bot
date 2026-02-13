@@ -1,0 +1,1 @@
+["job-queue]==21.0.1\naiohttp==3.9.3\npydantic==2.6.1\npydantic-settings==2.1.0\npocketbase==0.12.0\npython-dotenv==1.0.1\nstructlog==24.1.0"]

@@ -1,0 +1,47 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: commontrust-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    networks:
+      - commontrust-network
+
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: pocketbase
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+    ports:
+      - "8090:8090"
+    volumes:
+      - pocketbase-data:/pb_data
+      - pocketbase-public:/pb_public
+      - ./pb_schema.json:/pb_schema.json:ro
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8090/api/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - commontrust-network
+
+volumes:
+  pocketbase-data:
+    driver: local
+  pocketbase-public:
+    driver: local
+
+networks:
+  commontrust-network:
+    driver: bridge

@@ -1,0 +1,404 @@
+[
+  {
+    "name": "members",
+    "type": "base",
+    "schema": [
+      {
+        "name": "telegram_id",
+        "type": "number",
+        "required": true,
+        "unique": true
+      },
+      {
+        "name": "username",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "display_name",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "joined_at",
+        "type": "datetime",
+        "required": false
+      },
+      {
+        "name": "verified",
+        "type": "bool",
+        "required": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_members_telegram ON members (telegram_id)"
+    ]
+  },
+  {
+    "name": "groups",
+    "type": "base",
+    "schema": [
+      {
+        "name": "telegram_id",
+        "type": "number",
+        "required": true,
+        "unique": true
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "mc_enabled",
+        "type": "bool",
+        "required": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_groups_telegram ON groups (telegram_id)"
+    ]
+  },
+  {
+    "name": "deals",
+    "type": "base",
+    "schema": [
+      {
+        "name": "initiator_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "counterparty_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "group_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "groups",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "initiator_offer",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "counterparty_offer",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "values": ["pending", "confirmed", "in_progress", "completed", "cancelled", "disputed"]
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_deals_status ON deals (status)",
+      "CREATE INDEX idx_deals_initiator ON deals (initiator_id)",
+      "CREATE INDEX idx_deals_counterparty ON deals (counterparty_id)"
+    ]
+  },
+  {
+    "name": "reviews",
+    "type": "base",
+    "schema": [
+      {
+        "name": "deal_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "deals",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "reviewer_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "reviewee_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "rating",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "comment",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "outcome",
+        "type": "select",
+        "required": true,
+        "values": ["positive", "neutral", "negative"]
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_reviews_deal ON reviews (deal_id)",
+      "CREATE INDEX idx_reviews_reviewee ON reviews (reviewee_id)"
+    ]
+  },
+  {
+    "name": "reputation",
+    "type": "base",
+    "schema": [
+      {
+        "name": "member_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1,
+        "unique": true
+      },
+      {
+        "name": "verified_deals",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "avg_rating",
+        "type": "number",
+        "required": false
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_reputation_member ON reputation (member_id)"
+    ]
+  },
+  {
+    "name": "mc_groups",
+    "type": "base",
+    "schema": [
+      {
+        "name": "group_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "groups",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "currency_name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "currency_symbol",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_mc_groups_group ON mc_groups (group_id)"
+    ]
+  },
+  {
+    "name": "mc_accounts",
+    "type": "base",
+    "schema": [
+      {
+        "name": "mc_group_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "mc_groups",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "member_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "balance",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "credit_limit",
+        "type": "number",
+        "required": true
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_mc_accounts_group ON mc_accounts (mc_group_id)",
+      "CREATE INDEX idx_mc_accounts_member ON mc_accounts (member_id)"
+    ]
+  },
+  {
+    "name": "mc_transactions",
+    "type": "base",
+    "schema": [
+      {
+        "name": "mc_group_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "mc_groups",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "payer_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "payee_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_mc_transactions_group ON mc_transactions (mc_group_id)",
+      "CREATE INDEX idx_mc_transactions_payer ON mc_transactions (payer_id)",
+      "CREATE INDEX idx_mc_transactions_payee ON mc_transactions (payee_id)"
+    ]
+  },
+  {
+    "name": "mc_entries",
+    "type": "base",
+    "schema": [
+      {
+        "name": "transaction_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "mc_transactions",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "account_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "mc_accounts",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "balance_after",
+        "type": "number",
+        "required": true
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_mc_entries_transaction ON mc_entries (transaction_id)",
+      "CREATE INDEX idx_mc_entries_account ON mc_entries (account_id)"
+    ]
+  },
+  {
+    "name": "sanctions",
+    "type": "base",
+    "schema": [
+      {
+        "name": "member_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "group_id",
+        "type": "relation",
+        "required": false,
+        "collectionId": "groups",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "type",
+        "type": "select",
+        "required": true,
+        "values": ["warning", "mute", "ban", "freeze"]
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "expires_at",
+        "type": "datetime",
+        "required": false
+      },
+      {
+        "name": "is_active",
+        "type": "bool",
+        "required": true
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_sanctions_member ON sanctions (member_id)",
+      "CREATE INDEX idx_sanctions_active ON sanctions (is_active)"
+    ]
+  }
+]
