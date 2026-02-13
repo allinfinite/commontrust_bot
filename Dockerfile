@@ -15,7 +15,7 @@ RUN pip install hatch
 
 COPY pyproject.toml .
 
-RUN pip install hatch || pip install aiogram pocketbase pydantic pydantic-settings python-dotenv httpx
+RUN pip install hatch || pip install aiogram pydantic pydantic-settings python-dotenv httpx
 
 COPY . .
 

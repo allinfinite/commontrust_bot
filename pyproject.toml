@@ -12,7 +12,6 @@ license = "MIT"
 authors = [{ name = "CommonTrust Team" }]
 dependencies = [
     "aiogram>=3.4.0",
-    "pocketbase>=0.21.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "python-dotenv>=1.0.0",
