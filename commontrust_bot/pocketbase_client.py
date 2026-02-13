@@ -29,6 +29,17 @@ class PocketBaseClient:
             self._client = None
 
     async def authenticate(self) -> None:
+        # Preferred: use a long-lived admin/superuser token (API key) from env.
+        if settings.pocketbase_admin_token and settings.pocketbase_admin_token.strip():
+            self.token = settings.pocketbase_admin_token.strip()
+            return
+
+        if not settings.pocketbase_admin_email or not settings.pocketbase_admin_password:
+            raise PocketBaseError(
+                "Missing PocketBase credentials. Set POCKETBASE_ADMIN_TOKEN (preferred) "
+                "or POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD."
+            )
+
         url = f"{self.base_url}/api/admins/auth-with-password"
         response = await self.client.post(
             url,

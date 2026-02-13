@@ -33,6 +33,9 @@ cp .env.example .env
 3. Edit `.env` with your configuration:
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_here
+# Preferred: create a PocketBase API key / admin token and use it (avoid storing a password)
+POCKETBASE_ADMIN_TOKEN=your_admin_token_or_api_key
+# Fallback:
 POCKETBASE_ADMIN_EMAIL=admin@example.com
 POCKETBASE_ADMIN_PASSWORD=your_secure_password
 ADMIN_USER_IDS=[your_telegram_user_id]
@@ -45,9 +48,9 @@ docker-compose up -d
 
 5. Initialize PocketBase schema:
 ```bash
-# Access PocketBase at http://localhost:8090/_/
-# Create admin account matching your .env credentials
-# Import pb_schema.json to create collections
+# Create a PocketBase admin token (see scripts/pb_create_admin_token.py)
+# Then create the collections defined in pb_schema.json:
+python3 scripts/pb_setup_db.py
 ```
 
 ### Manual Installation
@@ -67,7 +70,8 @@ pip install -e .
    - Download from [pocketbase.io](https://pocketbase.io)
    - Run `./pocketbase serve`
    - Create admin account at http://localhost:8090/_/
-   - Import `pb_schema.json` to create collections
+   - Create the collections defined in `pb_schema.json`:
+     - `python3 scripts/pb_setup_db.py`
 
 4. Configure environment:
 ```bash
