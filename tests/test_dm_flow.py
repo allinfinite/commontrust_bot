@@ -61,6 +61,7 @@ async def test_start_deal_claims_and_notifies_initiator(monkeypatch) -> None:
     assert "Deal accepted and confirmed" in msg.answers[-1]["text"]
     # initiator was notified
     assert any(chat_id == 1 for chat_id, _ in msg.bot.sent)  # type: ignore[attr-defined]
+    assert msg.answers[-1].get("reply_markup") is not None
 
 
 @pytest.mark.asyncio

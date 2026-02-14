@@ -23,6 +23,29 @@ async def _bot_username(message: Message) -> str:
     return me.username
 
 
+def _complete_kb(deal_id: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Mark Completed", callback_data=f"deal_complete:{deal_id}")]
+        ]
+    )
+
+
+async def _send_review_links(message: Message, deal_id: str) -> None:
+    me = await message.bot.get_me()
+    if not me.username:
+        return
+    link = f"https://t.me/{me.username}?start=review_{deal_id}"
+    initiator_tid, counterparty_tid = await deal_service.get_deal_participant_telegram_ids(deal_id)
+    review_msg = (
+        "Leave a review for your completed deal:\n\n"
+        f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n"
+        f"{html.quote(link)}"
+    )
+    for tid in {initiator_tid, counterparty_tid}:
+        await message.bot.send_message(tid, review_msg, parse_mode="HTML")
+
+
 @router.message(Command("newdeal"))
 async def cmd_newdeal(message: Message) -> None:
     if message.chat.type != "private":
@@ -84,8 +107,9 @@ async def cmd_start_deeplink(message: Message) -> None:
                 "Deal accepted and confirmed.\n\n"
                 f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n"
                 f"<b>Status:</b> Confirmed\n\n"
-                f"Either party can complete it any time with:\n/complete {html.quote(deal_id)}",
+                "Either party can complete it any time:",
                 parse_mode="HTML",
+                reply_markup=_complete_kb(deal_id),
             )
 
             # Notify initiator in DM as well (best-effort).
@@ -95,8 +119,9 @@ async def cmd_start_deeplink(message: Message) -> None:
                     initiator_tid,
                     "Your deal invite was accepted.\n\n"
                     f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n"
-                    f"Complete any time with /complete {html.quote(deal_id)}",
+                    "Tap to complete any time:",
                     parse_mode="HTML",
+                    reply_markup=_complete_kb(deal_id),
                 )
         except Exception as e:
             await message.answer(f"Failed to accept invite: {e}")
@@ -160,6 +185,37 @@ async def cb_review_rating(query: CallbackQuery) -> None:
         "Send an optional comment now, or type /skip to submit without a comment.",
         parse_mode="HTML",
     )
+
+
+@router.callback_query(F.data.startswith("deal_complete:"))
+async def cb_deal_complete(query: CallbackQuery) -> None:
+    data = query.data or ""
+    parts = data.split(":", 1)
+    if len(parts) != 2:
+        await query.answer("Invalid action.", show_alert=True)
+        return
+
+    deal_id = parts[1].strip()
+    if not deal_id:
+        await query.answer("Invalid deal id.", show_alert=True)
+        return
+
+    try:
+        await deal_service.complete_deal(deal_id, query.from_user.id)
+        await query.answer("Completed.")
+        await query.message.answer(
+            "Deal completed.\n\n"
+            f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n\n"
+            "Reviews are private until both parties submit them.",
+            parse_mode="HTML",
+        )
+        try:
+            await _send_review_links(query.message, deal_id)
+        except Exception:
+            pass
+    except Exception as e:
+        await query.answer("Failed.", show_alert=False)
+        await query.message.answer(f"Failed to complete deal: {e}")
 
 
 @router.message(
