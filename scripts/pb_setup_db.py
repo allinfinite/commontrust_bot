@@ -67,40 +67,53 @@ def _read_schema(path: Path) -> list[dict[str, Any]]:
 
 def _pb_field(field: dict[str, Any], name_to_id: dict[str, str]) -> dict[str, Any]:
     ftype = field["type"]
+    # PocketBase uses "date" for date-time values; our schema calls it "datetime".
+    pb_type = "date" if ftype == "datetime" else ftype
     out: dict[str, Any] = {
         "name": field["name"],
-        "type": ftype,
+        "type": pb_type,
         "required": bool(field.get("required", False)),
         "unique": bool(field.get("unique", False)),
     }
 
-    # PocketBase requires an "options" object for many field types.
-    if ftype == "text":
-        out["options"] = {"min": None, "max": None, "pattern": ""}
-    elif ftype == "number":
-        out["options"] = {"min": None, "max": None, "noDecimal": False}
-    elif ftype == "bool":
-        out["options"] = {}
-    elif ftype == "datetime":
-        out["options"] = {"min": "", "max": ""}
-    elif ftype == "select":
+    # PocketBase v0.23+ uses flat field options (no nested "options" object).
+    if pb_type == "text":
+        out.update({"min": None, "max": None, "pattern": "", "autogeneratePattern": ""})
+    elif pb_type == "number":
+        out.update({"min": None, "max": None, "noDecimal": False})
+    elif pb_type == "bool":
+        pass
+    elif pb_type == "date":
+        out.update({"min": "", "max": ""})
+    elif pb_type == "select":
         values = field.get("values")
         if not isinstance(values, list) or not values:
             raise PBSetupError(f"select field missing values: {field!r}")
-        out["options"] = {"maxSelect": 1, "values": values}
-    elif ftype == "relation":
+        out.update({"maxSelect": 1, "values": values})
+    elif pb_type == "relation":
         target = field.get("collectionId")
         if not isinstance(target, str) or not target:
             raise PBSetupError(f"relation field missing collectionId: {field!r}")
         if target not in name_to_id:
             raise PBSetupError(f"relation target collection not found yet: {target}")
-        out["options"] = {
-            "collectionId": name_to_id[target],
-            "cascadeDelete": bool(field.get("cascadeDelete", False)),
-            "minSelect": field.get("minSelect", None),
-            "maxSelect": field.get("maxSelect", 1),
-            "displayFields": [],
-        }
+        out.update(
+            {
+                "collectionId": name_to_id[target],
+                "cascadeDelete": bool(field.get("cascadeDelete", False)),
+                "minSelect": field.get("minSelect", None),
+                "maxSelect": field.get("maxSelect", 1),
+                "displayFields": [],
+            }
+        )
+    elif pb_type == "autodate":
+        # Automatically managed timestamps (useful for reliable sorting in some PocketBase builds
+        # where the implicit system "created"/"updated" are not sortable).
+        out.update(
+            {
+                "onCreate": bool(field.get("onCreate", True)),
+                "onUpdate": bool(field.get("onUpdate", False)),
+            }
+        )
     else:
         raise PBSetupError(f"Unsupported field type in pb_schema.json: {ftype}")
 
@@ -163,7 +176,7 @@ def _pb_create_collection(
     payload: dict[str, Any] = {
         "name": coll["name"],
         "type": coll.get("type", "base"),
-        "schema": [_pb_field(f, name_to_id) for f in coll.get("schema", [])],
+        "fields": [_pb_field(f, name_to_id) for f in coll.get("schema", [])],
         # WARNING: PocketBase stores field values in the 'data' JSON column and index expressions
         # must reference json_extract(...). The pb_schema.json indexes are legacy and may fail.
         "indexes": coll.get("indexes", []) if include_indexes else [],
@@ -191,7 +204,7 @@ def _pb_update_collection(
     payload: dict[str, Any] = {
         "name": coll["name"],
         "type": coll.get("type", "base"),
-        "schema": [_pb_field(f, name_to_id) for f in coll.get("schema", [])],
+        "fields": [_pb_field(f, name_to_id) for f in coll.get("schema", [])],
         "indexes": coll.get("indexes", []) if include_indexes else [],
     }
 

@@ -187,6 +187,8 @@ class FakePocketBase:
         rating: int,
         comment: str | None = None,
         outcome: str = "positive",
+        reviewer_username: str | None = None,
+        reviewee_username: str | None = None,
     ) -> dict[str, Any]:
         return await self.create_record(
             "reviews",
@@ -197,6 +199,8 @@ class FakePocketBase:
                 "rating": rating,
                 "comment": comment,
                 "outcome": outcome,
+                "reviewer_username": reviewer_username,
+                "reviewee_username": reviewee_username,
             },
         )
 
@@ -278,4 +282,3 @@ class FakePocketBase:
 
     async def sanction_deactivate(self, sanction_id: str) -> dict[str, Any]:
         return await self.update_record("sanctions", sanction_id, {"is_active": False})
-

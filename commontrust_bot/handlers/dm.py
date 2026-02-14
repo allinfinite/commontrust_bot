@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import complete_kb, review_kb
-from commontrust_bot.web_links import deal_reviews_url
+from commontrust_bot.web_links import deal_reviews_url, user_reviews_url, user_reviews_url_by_telegram_id
 
 router = Router()
 
@@ -59,6 +59,10 @@ async def cmd_newdeal(message: Message) -> None:
 
     description = args[1].strip()
     try:
+        # Ensure usernames are stored so the web UI can show/search by @username.
+        await deal_service.reputation.get_or_create_member(
+            message.from_user.id, message.from_user.username, message.from_user.full_name
+        )
         result = await deal_service.create_invite_deal(
             initiator_telegram_id=message.from_user.id,
             description=description,
@@ -101,6 +105,9 @@ async def cmd_start_deeplink(message: Message) -> None:
             return
 
         try:
+            await deal_service.reputation.get_or_create_member(
+                message.from_user.id, message.from_user.username, message.from_user.full_name
+            )
             result = await deal_service.accept_invite_deal(deal_id, message.from_user.id)
             deal = result["deal"]
             await message.answer(
@@ -167,6 +174,9 @@ async def cb_review_rating(query: CallbackQuery) -> None:
 
     user_id = query.from_user.id
     _PENDING_REVIEW_COMMENT[user_id] = (deal_id, rating)
+    await deal_service.reputation.get_or_create_member(
+        query.from_user.id, query.from_user.username, query.from_user.full_name
+    )
 
     await query.answer("Rating selected.")
     await query.message.answer(
@@ -190,6 +200,9 @@ async def cb_deal_complete(query: CallbackQuery) -> None:
         return
 
     try:
+        await deal_service.reputation.get_or_create_member(
+            query.from_user.id, query.from_user.username, query.from_user.full_name
+        )
         await deal_service.complete_deal(deal_id, query.from_user.id)
         await query.answer("Completed.")
         await query.message.answer(
@@ -233,7 +246,10 @@ async def maybe_capture_review_comment(message: Message) -> None:
         comment = text if text else None
 
     try:
-        await deal_service.create_review(
+        await deal_service.reputation.get_or_create_member(
+            message.from_user.id, message.from_user.username, message.from_user.full_name
+        )
+        result = await deal_service.create_review(
             deal_id=deal_id,
             reviewer_telegram_id=message.from_user.id,
             rating=rating,
@@ -241,13 +257,22 @@ async def maybe_capture_review_comment(message: Message) -> None:
         )
         _PENDING_REVIEW_COMMENT.pop(message.from_user.id, None)
         url = deal_reviews_url(deal_id)
+        reviewee = result.get("reviewee") if isinstance(result, dict) else None
+        username = (reviewee or {}).get("username") if isinstance(reviewee, dict) else None
+        telegram_id = (reviewee or {}).get("telegram_id") if isinstance(reviewee, dict) else None
+        profile_url = (
+            user_reviews_url_by_telegram_id(telegram_id if isinstance(telegram_id, int) else None)
+            or (user_reviews_url(username) if isinstance(username, str) else None)
+        )
         if url:
             await message.answer(
                 "Review submitted. Thanks!\n\n"
-                f"View on web:\n{html.quote(url)}",
+                f"View on web:\n{html.quote(url)}"
+                f"{f'\\n\\nReviewed user:\\n{html.quote(profile_url)}' if profile_url else ''}",
                 parse_mode="HTML",
             )
         else:
-            await message.answer("Review submitted. Thanks!")
+            view = f"\n\nReviewed user:\n{html.quote(profile_url)}" if profile_url else ""
+            await message.answer("Review submitted. Thanks!" + view, parse_mode="HTML")
     except Exception as e:
         await message.answer(f"Failed to submit review: {e}")

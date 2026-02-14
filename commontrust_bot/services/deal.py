@@ -271,6 +271,7 @@ class DealService:
         if existing_reviews.get("items"):
             raise ValueError("You have already reviewed this deal")
 
+        reviewee = await self.pb.get_record("members", reviewee_id)
         review = await self.pb.review_create(
             deal_id=deal_id,
             reviewer_id=reviewer_id,
@@ -278,6 +279,8 @@ class DealService:
             rating=rating,
             comment=comment,
             outcome=outcome,
+            reviewer_username=reviewer.get("username"),
+            reviewee_username=reviewee.get("username") if isinstance(reviewee, dict) else None,
         )
 
         await self.reputation.calculate_reputation(reviewee_id)
@@ -285,6 +288,7 @@ class DealService:
         return {
             "review": review,
             "reviewer": reviewer,
+            "reviewee": reviewee,
             "deal": deal,
         }
 

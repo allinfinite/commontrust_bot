@@ -4,7 +4,7 @@ from aiogram.types import Message
 
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import review_kb
-from commontrust_bot.web_links import deal_reviews_url
+from commontrust_bot.web_links import deal_reviews_url, user_reviews_url, user_reviews_url_by_telegram_id
 
 router = Router()
 
@@ -42,6 +42,14 @@ async def cmd_deal(message: Message) -> None:
         return
 
     try:
+        # Ensure usernames are stored so the web UI can show/search by @username.
+        await deal_service.reputation.get_or_create_member(
+            message.from_user.id, message.from_user.username, message.from_user.full_name
+        )
+        await deal_service.reputation.get_or_create_member(
+            counterparty.id, counterparty.username, counterparty.full_name
+        )
+
         result = await deal_service.create_deal(
             initiator_telegram_id=message.from_user.id,
             counterparty_telegram_id=counterparty.id,
@@ -72,6 +80,9 @@ async def cmd_confirm(message: Message) -> None:
     deal_id = args[1].strip()
 
     try:
+        await deal_service.reputation.get_or_create_member(
+            message.from_user.id, message.from_user.username, message.from_user.full_name
+        )
         result = await deal_service.confirm_deal(deal_id, message.from_user.id)
         await message.answer(
             f"Deal confirmed!\n\n"
@@ -96,6 +107,9 @@ async def cmd_complete(message: Message) -> None:
     deal_id = args[1].strip()
 
     try:
+        await deal_service.reputation.get_or_create_member(
+            message.from_user.id, message.from_user.username, message.from_user.full_name
+        )
         result = await deal_service.complete_deal(deal_id, message.from_user.id)
         await message.answer(
             f"Deal completed!\n\n"
@@ -144,6 +158,9 @@ async def cmd_cancel(message: Message) -> None:
     reason = args[2] if len(args) > 2 else None
 
     try:
+        await deal_service.reputation.get_or_create_member(
+            message.from_user.id, message.from_user.username, message.from_user.full_name
+        )
         result = await deal_service.cancel_deal(deal_id, message.from_user.id, reason)
         await message.answer(
             f"Deal cancelled.\n\n<b>Deal ID:</b> {deal_id}",
@@ -172,7 +189,10 @@ async def cmd_review(message: Message) -> None:
     comment = args[3] if len(args) > 3 else None
 
     try:
-        await deal_service.create_review(
+        await deal_service.reputation.get_or_create_member(
+            message.from_user.id, message.from_user.username, message.from_user.full_name
+        )
+        result = await deal_service.create_review(
             deal_id=deal_id,
             reviewer_telegram_id=message.from_user.id,
             rating=rating,
@@ -180,12 +200,21 @@ async def cmd_review(message: Message) -> None:
         )
         url = deal_reviews_url(deal_id)
         view_line = f"\n\n<b>View on web:</b> {html.quote(url)}" if url else ""
+        reviewee = result.get("reviewee") if isinstance(result, dict) else None
+        username = (reviewee or {}).get("username") if isinstance(reviewee, dict) else None
+        telegram_id = (reviewee or {}).get("telegram_id") if isinstance(reviewee, dict) else None
+        profile_url = (
+            user_reviews_url_by_telegram_id(telegram_id if isinstance(telegram_id, int) else None)
+            or (user_reviews_url(username) if isinstance(username, str) else None)
+        )
+        profile_line = f"\n\n<b>Reviewed user:</b> {html.quote(profile_url)}" if profile_url else ""
         await message.answer(
             f"Review submitted!\n\n"
             f"<b>Deal ID:</b> {deal_id}\n"
             f"<b>Rating:</b> {'⭐' * rating}\n"
             f"{f'<b>Comment:</b> {comment}' if comment else ''}"
-            f"{view_line}",
+            f"{view_line}"
+            f"{profile_line}",
             parse_mode="HTML",
         )
     except ValueError as e:

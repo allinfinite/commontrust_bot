@@ -124,11 +124,12 @@ class PocketBaseClient:
     async def member_get_or_create(
         self, telegram_id: int, username: str | None = None, display_name: str | None = None
     ) -> dict[str, Any]:
+        username_norm = username.strip().lstrip("@").lower() if username and username.strip() else None
         existing = await self.get_first("members", f"telegram_id={telegram_id}")
         if existing:
             update_data = {}
-            if username and username != existing.get("username"):
-                update_data["username"] = username
+            if username_norm and username_norm != (existing.get("username") or ""):
+                update_data["username"] = username_norm
             if display_name and display_name != existing.get("display_name"):
                 update_data["display_name"] = display_name
             if update_data:
@@ -139,7 +140,7 @@ class PocketBaseClient:
             "members",
             {
                 "telegram_id": telegram_id,
-                "username": username,
+                "username": username_norm,
                 "display_name": display_name,
                 "joined_at": datetime.now().isoformat(),
             },
@@ -197,6 +198,8 @@ class PocketBaseClient:
         rating: int,
         comment: str | None = None,
         outcome: str = "positive",
+        reviewer_username: str | None = None,
+        reviewee_username: str | None = None,
     ) -> dict[str, Any]:
         return await self.create_record(
             "reviews",
@@ -207,6 +210,12 @@ class PocketBaseClient:
                 "rating": rating,
                 "comment": comment,
                 "outcome": outcome,
+                "reviewer_username": reviewer_username.strip().lstrip("@").lower()
+                if reviewer_username and reviewer_username.strip()
+                else None,
+                "reviewee_username": reviewee_username.strip().lstrip("@").lower()
+                if reviewee_username and reviewee_username.strip()
+                else None,
             },
         )
 

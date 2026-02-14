@@ -61,3 +61,13 @@ pb_data/
 
 # SQLite databases
 *.db
+
+# Node / Next.js (website)
+node_modules/
+.next/
+out/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

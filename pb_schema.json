@@ -28,6 +28,13 @@
         "name": "verified",
         "type": "bool",
         "required": false
+      },
+      {
+        "name": "created_at",
+        "type": "autodate",
+        "required": false,
+        "onCreate": true,
+        "onUpdate": false
       }
     ],
     "indexes": [
@@ -53,6 +60,13 @@
         "name": "mc_enabled",
         "type": "bool",
         "required": false
+      },
+      {
+        "name": "created_at",
+        "type": "autodate",
+        "required": false,
+        "onCreate": true,
+        "onUpdate": false
       }
     ],
     "indexes": [
@@ -110,6 +124,13 @@
         "type": "select",
         "required": true,
         "values": ["pending", "confirmed", "in_progress", "completed", "cancelled", "disputed"]
+      },
+      {
+        "name": "created_at",
+        "type": "autodate",
+        "required": false,
+        "onCreate": true,
+        "onUpdate": false
       }
     ],
     "indexes": [
@@ -164,6 +185,23 @@
         "type": "select",
         "required": true,
         "values": ["positive", "neutral", "negative"]
+      },
+      {
+        "name": "reviewer_username",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "reviewee_username",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "created_at",
+        "type": "autodate",
+        "required": false,
+        "onCreate": true,
+        "onUpdate": false
       }
     ],
     "indexes": [
@@ -306,6 +344,13 @@
         "name": "description",
         "type": "text",
         "required": false
+      },
+      {
+        "name": "created_at",
+        "type": "autodate",
+        "required": false,
+        "onCreate": true,
+        "onUpdate": false
       }
     ],
     "indexes": [

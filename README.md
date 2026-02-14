@@ -199,6 +199,12 @@ The bot requires these collections (import `pb_schema.json`):
 - `expires_at` (datetime)
 - `is_active` (bool)
 
+## Website (Reviews Viewer)
+
+There is a small Next.js website for browsing reviews at `web/` (designed for Vercel).
+
+- Setup instructions: `web/README.md`
+
 ## How It Works
 
 ### Reputation System

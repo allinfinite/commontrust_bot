@@ -133,7 +133,7 @@ class MutualCreditService:
     ) -> list[dict]:
         filter_str = f'mc_group_id="{mc_group_id}" && (payer_id="{member_id}" || payee_id="{member_id}")'
         result = await self.pb.list_records(
-            "mc_transactions", filter=filter_str, per_page=limit, sort="-created"
+            "mc_transactions", filter=filter_str, per_page=limit, sort="-created_at"
         )
         return result.get("items", [])
 
