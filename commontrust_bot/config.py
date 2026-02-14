@@ -8,7 +8,9 @@ class Settings(BaseSettings):
         env_file=(".env.local", ".env"), env_file_encoding="utf-8", extra="ignore"
     )
 
-    telegram_bot_token: str = Field(..., description="Telegram bot token from @BotFather")
+    # Keep this optional at import-time so tooling/tests can import modules without
+    # having to provision secrets. Runtime checks should use `is_configured`.
+    telegram_bot_token: str = Field(default="", description="Telegram bot token from @BotFather")
 
     pocketbase_url: str = Field(
         default="http://localhost:8090", description="PocketBase server URL"

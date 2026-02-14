@@ -50,6 +50,9 @@ htmlcov/
 # Logs
 *.log
 
+# Local reports/artifacts
+reports/
+
 # PocketBase data
 pb_data/
 

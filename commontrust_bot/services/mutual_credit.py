@@ -1,7 +1,4 @@
-from aiogram import logger
-
-from commontrust_bot.config import settings
-from commontrust_bot.pocketbase_client import PocketBaseError, pb_client
+from commontrust_bot.pocketbase_client import pb_client
 from commontrust_bot.services.reputation import reputation_service
 
 
@@ -10,8 +7,10 @@ class InsufficientCreditError(Exception):
 
 
 class MutualCreditService:
-    def __init__(self):
-        self.pb = pb_client
+    def __init__(self, pb=None, reputation=None):
+        # Allow injection for tests; default to global singletons.
+        self.pb = pb or pb_client
+        self.reputation = reputation or reputation_service
 
     async def get_or_create_mc_group(
         self, group_id: str, currency_name: str = "Credit", currency_symbol: str = "Cr"
@@ -29,8 +28,8 @@ class MutualCreditService:
             return account
 
         member_id_to_use = member_record_id or member_id
-        rep = await reputation_service.get_reputation(member_id_to_use)
-        credit_limit = reputation_service.compute_credit_limit(
+        rep = await self.reputation.get_reputation(member_id_to_use)
+        credit_limit = self.reputation.compute_credit_limit(
             rep.get("verified_deals", 0) if rep else 0
         )
 
@@ -38,7 +37,11 @@ class MutualCreditService:
 
     async def get_account_balance(self, mc_group_id: str, member_id: str) -> dict:
         account = await self.get_or_create_account(mc_group_id, member_id)
-        mc_group = await self.pb.mc_group_get_by_id(mc_group_id) if mc_group_id.startswith("mc_") else None
+        mc_group = None
+        try:
+            mc_group = await self.pb.get_record("mc_groups", mc_group_id)
+        except Exception:
+            mc_group = None
         
         return {
             "balance": account.get("balance", 0),
@@ -139,8 +142,8 @@ class MutualCreditService:
         return await self.pb.mc_account_update(account.get("id"), account.get("balance", 0), new_limit)
 
     async def recalculate_credit_limit(self, mc_group_id: str, member_id: str) -> dict:
-        rep = await reputation_service.get_reputation(member_id)
-        new_limit = reputation_service.compute_credit_limit(
+        rep = await self.reputation.get_reputation(member_id)
+        new_limit = self.reputation.compute_credit_limit(
             rep.get("verified_deals", 0) if rep else 0
         )
         return await self.update_credit_limit(mc_group_id, member_id, new_limit)

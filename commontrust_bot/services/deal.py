@@ -1,9 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from aiogram import logger
-
-from commontrust_bot.pocketbase_client import PocketBaseError, pb_client
+from commontrust_bot.pocketbase_client import pb_client
 from commontrust_bot.services.reputation import reputation_service
 
 
@@ -17,8 +15,10 @@ class DealStatus(str, Enum):
 
 
 class DealService:
-    def __init__(self):
-        self.pb = pb_client
+    def __init__(self, pb=None, reputation=None):
+        # Allow injection for tests; default to global singletons.
+        self.pb = pb or pb_client
+        self.reputation = reputation or reputation_service
 
     async def create_deal(
         self,
@@ -29,12 +29,12 @@ class DealService:
         initiator_offer: str | None = None,
         counterparty_offer: str | None = None,
     ) -> dict:
-        initiator = await reputation_service.get_or_create_member(initiator_telegram_id)
-        counterparty = await reputation_service.get_or_create_member(counterparty_telegram_id)
+        initiator = await self.reputation.get_or_create_member(initiator_telegram_id)
+        counterparty = await self.reputation.get_or_create_member(counterparty_telegram_id)
         
         group = await self.pb.group_get_or_create(group_telegram_id, "")
 
-        sanction = await self.pb.sanction_get_active(counterparty, group.get("id"))
+        sanction = await self.pb.sanction_get_active(counterparty.get("id"), group.get("id"))
         if sanction:
             raise ValueError(f"Counterparty has active sanction: {sanction.get('type')}")
 
@@ -65,7 +65,7 @@ class DealService:
         if deal.get("status") != DealStatus.PENDING.value:
             raise ValueError(f"Deal is not pending. Current status: {deal.get('status')}")
 
-        confirmer = await reputation_service.get_member(confirmer_telegram_id)
+        confirmer = await self.reputation.get_member(confirmer_telegram_id)
         if not confirmer:
             raise ValueError("Confirmer not found")
 
@@ -103,7 +103,7 @@ class DealService:
         if deal.get("status") not in [DealStatus.CONFIRMED.value, DealStatus.IN_PROGRESS.value]:
             raise ValueError(f"Deal cannot be completed. Current status: {deal.get('status')}")
 
-        completer = await reputation_service.get_member(completer_telegram_id)
+        completer = await self.reputation.get_member(completer_telegram_id)
         if not completer:
             raise ValueError("Completer not found")
 
@@ -128,7 +128,7 @@ class DealService:
         if deal.get("status") == DealStatus.COMPLETED.value:
             raise ValueError("Cannot cancel a completed deal")
 
-        canceller = await reputation_service.get_member(canceller_telegram_id)
+        canceller = await self.reputation.get_member(canceller_telegram_id)
         if not canceller:
             raise ValueError("Canceller not found")
 
@@ -162,7 +162,7 @@ class DealService:
         if deal.get("status") != DealStatus.COMPLETED.value:
             raise ValueError("Can only review completed deals")
 
-        reviewer = await reputation_service.get_member(reviewer_telegram_id)
+        reviewer = await self.reputation.get_member(reviewer_telegram_id)
         if not reviewer:
             raise ValueError("Reviewer not found")
 
@@ -190,7 +190,7 @@ class DealService:
             outcome=outcome,
         )
 
-        await reputation_service.calculate_reputation(reviewee_id)
+        await self.reputation.calculate_reputation(reviewee_id)
 
         return {
             "review": review,
@@ -200,10 +200,16 @@ class DealService:
 
     async def get_deal_reviews(self, deal_id: str) -> list[dict]:
         result = await self.pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
-        return result.get("items", [])
+        items = result.get("items", [])
+
+        # Hide reviews until both parties have left a review.
+        reviewer_ids = {r.get("reviewer_id") for r in items if r.get("reviewer_id")}
+        if len(reviewer_ids) < 2:
+            return []
+        return items
 
     async def get_pending_deals_for_user(self, telegram_id: int) -> list[dict]:
-        member = await reputation_service.get_member(telegram_id)
+        member = await self.reputation.get_member(telegram_id)
         if not member:
             return []
 
@@ -213,7 +219,7 @@ class DealService:
         return result.get("items", [])
 
     async def get_active_deals_for_user(self, telegram_id: int) -> list[dict]:
-        member = await reputation_service.get_member(telegram_id)
+        member = await self.reputation.get_member(telegram_id)
         if not member:
             return []
 

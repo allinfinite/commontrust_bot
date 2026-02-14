@@ -1,12 +1,39 @@
-from aiogram import logger
+import logging
+from collections.abc import Iterable
 
 from commontrust_bot.config import settings
 from commontrust_bot.pocketbase_client import pb_client
 
+logger = logging.getLogger(__name__)
+
+async def _deal_is_fully_reviewed(pb: object, deal_id: str) -> bool:
+    # Only expose reviews once both parties have reviewed. For 2-party deals,
+    # this means at least 2 distinct reviewers exist for that deal.
+    try:
+        result = await pb.list_records("reviews", filter=f'deal_id="{deal_id}"', per_page=200)
+    except TypeError:
+        # Some PB clients don't accept per_page keyword; fall back.
+        result = await pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
+
+    items = result.get("items", []) if isinstance(result, dict) else []
+    reviewer_ids = {r.get("reviewer_id") for r in items if r.get("reviewer_id")}
+    return len(reviewer_ids) >= 2
+
+
+def _visible_reviews(pb: object, reviews: Iterable[dict], fully_reviewed_deal_ids: set[str]) -> list[dict]:
+    # Filter down to reviews whose deal has both parties' reviews submitted.
+    out: list[dict] = []
+    for r in reviews:
+        deal_id = r.get("deal_id")
+        if isinstance(deal_id, str) and deal_id in fully_reviewed_deal_ids:
+            out.append(r)
+    return out
+
 
 class ReputationService:
-    def __init__(self):
-        self.pb = pb_client
+    def __init__(self, pb=None):
+        # Allow injection for tests; default to global singleton.
+        self.pb = pb or pb_client
 
     async def get_or_create_member(
         self, telegram_id: int, username: str | None = None, display_name: str | None = None
@@ -18,27 +45,36 @@ class ReputationService:
 
     async def calculate_reputation(self, member_id: str) -> dict:
         reviews = await self.pb.reviews_for_member(member_id)
-        
+
         if not reviews:
             return {"verified_deals": 0, "avg_rating": 0.0, "total_reviews": 0}
 
-        total_rating = sum(r.get("rating", 0) for r in reviews)
-        avg_rating = total_rating / len(reviews)
-        verified_deals = len(set(r.get("deal_id") for r in reviews))
+        deal_ids = {r.get("deal_id") for r in reviews if isinstance(r.get("deal_id"), str)}
+        fully_reviewed: set[str] = set()
+        for deal_id in deal_ids:
+            if await _deal_is_fully_reviewed(self.pb, deal_id):
+                fully_reviewed.add(deal_id)
+
+        visible = _visible_reviews(self.pb, reviews, fully_reviewed)
+        if not visible:
+            return {"verified_deals": 0, "avg_rating": 0.0, "total_reviews": 0}
+
+        total_rating = sum(r.get("rating", 0) for r in visible)
+        avg_rating = total_rating / len(visible)
+        verified_deals = len({r.get("deal_id") for r in visible if r.get("deal_id")})
 
         await self.pb.reputation_update(member_id, verified_deals, avg_rating)
 
         return {
             "verified_deals": verified_deals,
             "avg_rating": round(avg_rating, 2),
-            "total_reviews": len(reviews),
+            "total_reviews": len(visible),
         }
 
     async def get_reputation(self, member_id: str) -> dict | None:
-        rep = await self.pb.reputation_get(member_id)
-        if not rep:
-            return await self.calculate_reputation(member_id)
-        return rep
+        # Always recompute so gating ("both parties reviewed") is enforced even if a stale
+        # record exists in PocketBase.
+        return await self.calculate_reputation(member_id)
 
     def compute_credit_limit(self, verified_deals: int, base_limit: int | None = None) -> int:
         base = base_limit or settings.credit_base_limit

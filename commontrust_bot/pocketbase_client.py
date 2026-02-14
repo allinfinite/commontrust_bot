@@ -1,10 +1,12 @@
-import json
+from datetime import datetime
+import logging
 from typing import Any
 
 import httpx
-from aiogram import logger
 
 from commontrust_bot.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class PocketBaseError(Exception):
@@ -321,6 +323,3 @@ class PocketBaseClient:
 
 
 pb_client = PocketBaseClient()
-
-
-from datetime import datetime  # noqa: E402
