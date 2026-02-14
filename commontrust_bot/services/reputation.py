@@ -6,6 +6,25 @@ from commontrust_bot.pocketbase_client import pb_client
 
 logger = logging.getLogger(__name__)
 
+
+def _aggregate_ratings_by_reviewer(reviews: Iterable[dict]) -> dict[str, float]:
+    # Prevent review farming: multiple reviews from the same reviewer count as one "vote".
+    buckets: dict[str, list[int]] = {}
+    for r in reviews:
+        reviewer_id = r.get("reviewer_id")
+        rating = r.get("rating")
+        if not isinstance(reviewer_id, str) or not isinstance(rating, int):
+            continue
+        buckets.setdefault(reviewer_id, []).append(rating)
+
+    out: dict[str, float] = {}
+    for reviewer_id, rs in buckets.items():
+        if not rs:
+            continue
+        out[reviewer_id] = sum(rs) / len(rs)
+    return out
+
+
 async def _deal_is_fully_reviewed(pb: object, deal_id: str) -> bool:
     # Only expose reviews once both parties have reviewed. For 2-party deals,
     # this means at least 2 distinct reviewers exist for that deal.
@@ -59,8 +78,12 @@ class ReputationService:
         if not visible:
             return {"verified_deals": 0, "avg_rating": 0.0, "total_reviews": 0}
 
-        total_rating = sum(r.get("rating", 0) for r in visible)
-        avg_rating = total_rating / len(visible)
+        # Average is computed per unique reviewer to avoid review farming between pairs.
+        by_reviewer = _aggregate_ratings_by_reviewer(visible)
+        if not by_reviewer:
+            return {"verified_deals": 0, "avg_rating": 0.0, "total_reviews": 0}
+
+        avg_rating = sum(by_reviewer.values()) / len(by_reviewer)
         verified_deals = len({r.get("deal_id") for r in visible if r.get("deal_id")})
 
         await self.pb.reputation_update(member_id, verified_deals, avg_rating)
@@ -68,7 +91,7 @@ class ReputationService:
         return {
             "verified_deals": verified_deals,
             "avg_rating": round(avg_rating, 2),
-            "total_reviews": len(visible),
+            "total_reviews": len(by_reviewer),
         }
 
     async def get_reputation(self, member_id: str) -> dict | None:
@@ -90,7 +113,7 @@ class ReputationService:
             filter_parts.append(f'status="{status}"')
         
         filter_str = " && ".join(filter_parts) if len(filter_parts) > 1 else filter_parts[0]
-        result = await self.pb.list_records("deals", per_page=limit, filter=filter_str, sort="-created")
+        result = await self.pb.list_records("deals", per_page=limit, filter=filter_str, sort="-created_at")
         return result.get("items", [])
 
     async def get_member_stats(self, member_id: str) -> dict:
