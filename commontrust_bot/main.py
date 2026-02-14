@@ -1,11 +1,11 @@
 import asyncio
 import logging
 import sys
+from contextlib import suppress
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart
-from aiogram.types import Message
 
 from commontrust_bot.config import settings
 from commontrust_bot.handlers import router
@@ -41,7 +41,10 @@ async def main() -> None:
         logger.error("Bot is not configured. Please set required environment variables.")
         sys.exit(1)
 
-    bot = Bot(token=settings.telegram_bot_token, parse_mode=ParseMode.HTML)
+    bot = Bot(
+        token=settings.telegram_bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     dp = Dispatcher()
 
     dp.include_router(router)
@@ -58,10 +61,8 @@ async def main() -> None:
 
 
 def run() -> None:
-    try:
+    with suppress(KeyboardInterrupt):
         asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
 
 
 if __name__ == "__main__":
