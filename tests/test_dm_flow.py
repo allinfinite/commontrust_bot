@@ -1,6 +1,7 @@
 import pytest
 
 from commontrust_bot.handlers import dm as dm_handlers
+from aiogram.dispatcher.event.bases import SkipHandler
 from commontrust_bot.services.deal import DealService
 from commontrust_bot.services.reputation import ReputationService
 from tests.fake_pocketbase import FakePocketBase
@@ -61,3 +62,11 @@ async def test_start_deal_claims_and_notifies_initiator(monkeypatch) -> None:
     # initiator was notified
     assert any(chat_id == 1 for chat_id, _ in msg.bot.sent)  # type: ignore[attr-defined]
 
+
+@pytest.mark.asyncio
+async def test_start_without_payload_skips(monkeypatch) -> None:
+    # DM router should not swallow /start without a payload.
+    msg = FakeMessage(text="/start", from_user=FakeUser(1), chat=FakeChat(1, "private"))
+    msg.bot = _FakeBot()  # type: ignore[attr-defined]
+    with pytest.raises(SkipHandler):
+        await dm_handlers.cmd_start_deeplink(msg)  # type: ignore[arg-type]

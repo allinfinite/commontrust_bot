@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from aiogram import F, Router, html
+from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -63,7 +64,7 @@ async def cmd_start_deeplink(message: Message) -> None:
     text = message.text or ""
     parts = text.split(maxsplit=1)
     if len(parts) < 2:
-        return
+        raise SkipHandler
 
     payload = parts[1].strip()
 
@@ -122,6 +123,9 @@ async def cmd_start_deeplink(message: Message) -> None:
         )
         return
 
+    # Unknown payload: allow other handlers (or future features) to respond.
+    raise SkipHandler
+
 
 @router.callback_query(F.data.startswith("review:"))
 async def cb_review_rating(query: CallbackQuery) -> None:
@@ -154,14 +158,18 @@ async def cb_review_rating(query: CallbackQuery) -> None:
     )
 
 
-@router.message(F.chat.type == "private")
+@router.message(
+    F.chat.type == "private",
+    lambda m: bool(getattr(m, "from_user", None))
+    and getattr(m.from_user, "id", None) in _PENDING_REVIEW_COMMENT,  # type: ignore[attr-defined]
+)
 async def maybe_capture_review_comment(message: Message) -> None:
     if not message.from_user:
-        return
+        raise SkipHandler
 
     pending = _PENDING_REVIEW_COMMENT.get(message.from_user.id)
     if not pending:
-        return
+        raise SkipHandler
 
     deal_id, rating = pending
     text = (message.text or "").strip()
@@ -171,8 +179,8 @@ async def maybe_capture_review_comment(message: Message) -> None:
     else:
         # Avoid treating other commands as comments.
         if text.startswith("/"):
-            await message.answer("Type a comment, or /skip.")
-            return
+            # Let real command handlers run (e.g. /help).
+            raise SkipHandler
         comment = text if text else None
 
     try:
@@ -186,4 +194,3 @@ async def maybe_capture_review_comment(message: Message) -> None:
         await message.answer("Review submitted. Thanks!")
     except Exception as e:
         await message.answer(f"Failed to submit review: {e}")
-
