@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     credit_base_limit: int = Field(default=100, description="Base credit limit for new members")
     credit_per_deal: int = Field(default=50, description="Credit limit increase per verified deal")
 
+    commontrust_web_url: str = Field(
+        default="",
+        description="Optional public website base URL (e.g. https://commontrust.example.com)",
+    )
+
     @property
     def is_configured(self) -> bool:
         has_pb_auth = bool(

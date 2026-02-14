@@ -4,6 +4,7 @@ from aiogram.types import Message
 
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import review_kb
+from commontrust_bot.web_links import deal_reviews_url
 
 router = Router()
 
@@ -171,17 +172,19 @@ async def cmd_review(message: Message) -> None:
     comment = args[3] if len(args) > 3 else None
 
     try:
-        result = await deal_service.create_review(
+        await deal_service.create_review(
             deal_id=deal_id,
             reviewer_telegram_id=message.from_user.id,
             rating=rating,
             comment=comment,
         )
+        url = deal_reviews_url(deal_id)
         await message.answer(
             f"Review submitted!\n\n"
             f"<b>Deal ID:</b> {deal_id}\n"
             f"<b>Rating:</b> {'⭐' * rating}\n"
-            f"{f'<b>Comment:</b> {comment}' if comment else ''}",
+            f"{f'<b>Comment:</b> {comment}' if comment else ''}"
+            f"{f'\\n\\n<b>View on web:</b> {html.quote(url)}' if url else ''}",
             parse_mode="HTML",
         )
     except ValueError as e:

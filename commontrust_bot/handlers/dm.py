@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import complete_kb, review_kb
+from commontrust_bot.web_links import deal_reviews_url
 
 router = Router()
 
@@ -239,6 +240,14 @@ async def maybe_capture_review_comment(message: Message) -> None:
             comment=comment,
         )
         _PENDING_REVIEW_COMMENT.pop(message.from_user.id, None)
-        await message.answer("Review submitted. Thanks!")
+        url = deal_reviews_url(deal_id)
+        if url:
+            await message.answer(
+                "Review submitted. Thanks!\n\n"
+                f"View on web:\n{html.quote(url)}",
+                parse_mode="HTML",
+            )
+        else:
+            await message.answer("Review submitted. Thanks!")
     except Exception as e:
         await message.answer(f"Failed to submit review: {e}")
