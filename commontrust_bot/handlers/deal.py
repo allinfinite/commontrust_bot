@@ -179,12 +179,13 @@ async def cmd_review(message: Message) -> None:
             comment=comment,
         )
         url = deal_reviews_url(deal_id)
+        view_line = f"\n\n<b>View on web:</b> {html.quote(url)}" if url else ""
         await message.answer(
             f"Review submitted!\n\n"
             f"<b>Deal ID:</b> {deal_id}\n"
             f"<b>Rating:</b> {'⭐' * rating}\n"
             f"{f'<b>Comment:</b> {comment}' if comment else ''}"
-            f"{f'\\n\\n<b>View on web:</b> {html.quote(url)}' if url else ''}",
+            f"{view_line}",
             parse_mode="HTML",
         )
     except ValueError as e:
