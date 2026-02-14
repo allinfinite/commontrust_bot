@@ -5,9 +5,10 @@ from typing import Any
 from aiogram import F, Router, html
 from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.filters import Command, CommandStart
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from commontrust_bot.services.deal import deal_service
+from commontrust_bot.ui import complete_kb, review_kb
 
 router = Router()
 
@@ -23,15 +24,7 @@ async def _bot_username(message: Message) -> str:
     return me.username
 
 
-def _complete_kb(deal_id: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Mark Completed", callback_data=f"deal_complete:{deal_id}")]
-        ]
-    )
-
-
-async def _send_review_links(message: Message, deal_id: str) -> None:
+async def _send_review_prompt(message: Message, deal_id: str) -> None:
     me = await message.bot.get_me()
     if not me.username:
         return
@@ -39,11 +32,17 @@ async def _send_review_links(message: Message, deal_id: str) -> None:
     initiator_tid, counterparty_tid = await deal_service.get_deal_participant_telegram_ids(deal_id)
     review_msg = (
         "Leave a review for your completed deal:\n\n"
-        f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n"
-        f"{html.quote(link)}"
+        f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n\n"
+        "Tap a rating (1-5). After that you can optionally send a comment, or /skip.\n\n"
+        f"If you need it later, here is the review link:\n{html.quote(link)}"
     )
     for tid in {initiator_tid, counterparty_tid}:
-        await message.bot.send_message(tid, review_msg, parse_mode="HTML")
+        await message.bot.send_message(
+            tid,
+            review_msg,
+            parse_mode="HTML",
+            reply_markup=review_kb(deal_id),
+        )
 
 
 @router.message(Command("newdeal"))
@@ -109,7 +108,7 @@ async def cmd_start_deeplink(message: Message) -> None:
                 f"<b>Status:</b> Confirmed\n\n"
                 "Either party can complete it any time:",
                 parse_mode="HTML",
-                reply_markup=_complete_kb(deal_id),
+                reply_markup=complete_kb(deal_id),
             )
 
             # Notify initiator in DM as well (best-effort).
@@ -121,7 +120,7 @@ async def cmd_start_deeplink(message: Message) -> None:
                     f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n"
                     "Tap to complete any time:",
                     parse_mode="HTML",
-                    reply_markup=_complete_kb(deal_id),
+                    reply_markup=complete_kb(deal_id),
                 )
         except Exception as e:
             await message.answer(f"Failed to accept invite: {e}")
@@ -132,23 +131,12 @@ async def cmd_start_deeplink(message: Message) -> None:
         if not deal_id:
             return
 
-        kb = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="1", callback_data=f"review:{deal_id}:1"),
-                    InlineKeyboardButton(text="2", callback_data=f"review:{deal_id}:2"),
-                    InlineKeyboardButton(text="3", callback_data=f"review:{deal_id}:3"),
-                    InlineKeyboardButton(text="4", callback_data=f"review:{deal_id}:4"),
-                    InlineKeyboardButton(text="5", callback_data=f"review:{deal_id}:5"),
-                ]
-            ]
-        )
         await message.answer(
             "Leave a rating for this completed deal:\n\n"
             f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n\n"
             "Tap a number (1-5). After that you can optionally send a comment.",
             parse_mode="HTML",
-            reply_markup=kb,
+            reply_markup=review_kb(deal_id),
         )
         return
 
@@ -210,7 +198,7 @@ async def cb_deal_complete(query: CallbackQuery) -> None:
             parse_mode="HTML",
         )
         try:
-            await _send_review_links(query.message, deal_id)
+            await _send_review_prompt(query.message, deal_id)
         except Exception:
             pass
     except Exception as e:

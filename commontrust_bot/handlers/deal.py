@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from commontrust_bot.services.deal import deal_service
+from commontrust_bot.ui import review_kb
 
 router = Router()
 
@@ -111,11 +112,17 @@ async def cmd_complete(message: Message) -> None:
                 initiator_tid, counterparty_tid = await deal_service.get_deal_participant_telegram_ids(deal_id)
                 review_msg = (
                     "Leave a review for your completed deal:\n\n"
-                    f"<b>Deal ID:</b> <code>{deal_id}</code>\n"
-                    f"{link}"
+                    f"<b>Deal ID:</b> <code>{deal_id}</code>\n\n"
+                    "Tap a rating (1-5). After that you can optionally send a comment, or /skip.\n\n"
+                    f"If you need it later, here is the review link:\n{link}"
                 )
                 for tid in {initiator_tid, counterparty_tid}:
-                    await message.bot.send_message(tid, review_msg, parse_mode="HTML")
+                    await message.bot.send_message(
+                        tid,
+                        review_msg,
+                        parse_mode="HTML",
+                        reply_markup=review_kb(deal_id),
+                    )
         except Exception:
             # Best-effort: don't fail /complete if DMing fails.
             pass
