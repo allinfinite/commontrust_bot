@@ -57,6 +57,90 @@ class DealService:
     async def get_deal(self, deal_id: str) -> dict | None:
         return await self.pb.deal_get(deal_id)
 
+    async def _get_member_telegram_id(self, member_record_id: str) -> int:
+        rec = await self.pb.get_record("members", member_record_id)
+        telegram_id = rec.get("telegram_id")
+        if not isinstance(telegram_id, int):
+            raise ValueError("Member telegram_id missing/invalid")
+        return telegram_id
+
+    async def get_deal_participant_telegram_ids(self, deal_id: str) -> tuple[int, int]:
+        deal = await self.get_deal(deal_id)
+        if not deal:
+            raise ValueError("Deal not found")
+        initiator_id = deal.get("initiator_id")
+        counterparty_id = deal.get("counterparty_id")
+        if not isinstance(initiator_id, str) or not isinstance(counterparty_id, str):
+            raise ValueError("Deal participants missing")
+        return (await self._get_member_telegram_id(initiator_id), await self._get_member_telegram_id(counterparty_id))
+
+    async def create_invite_deal(
+        self,
+        initiator_telegram_id: int,
+        description: str,
+        initiator_offer: str | None = None,
+        counterparty_offer: str | None = None,
+    ) -> dict:
+        # DM-first flow: create an "unclaimed" deal invite by setting counterparty_id=initiator_id.
+        # The first non-initiator who opens the invite deep-link will claim it.
+        initiator = await self.reputation.get_or_create_member(initiator_telegram_id)
+        group = await self.pb.group_get_or_create(0, "DM")
+
+        initiator_id = initiator.get("id")
+        if not isinstance(initiator_id, str):
+            raise ValueError("Initiator missing id")
+
+        deal = await self.pb.deal_create(
+            initiator_id=initiator_id,
+            counterparty_id=initiator_id,
+            group_id=group.get("id"),
+            description=description,
+            initiator_offer=initiator_offer,
+            counterparty_offer=counterparty_offer,
+        )
+
+        return {"deal": deal, "initiator": initiator, "group": group}
+
+    async def accept_invite_deal(self, deal_id: str, accepter_telegram_id: int) -> dict:
+        deal = await self.get_deal(deal_id)
+        if not deal:
+            raise ValueError("Deal not found")
+
+        if deal.get("status") != DealStatus.PENDING.value:
+            raise ValueError("This deal invite is no longer pending")
+
+        initiator_id = deal.get("initiator_id")
+        counterparty_id = deal.get("counterparty_id")
+        if not isinstance(initiator_id, str) or not isinstance(counterparty_id, str):
+            raise ValueError("Deal participants missing")
+
+        accepter = await self.reputation.get_or_create_member(accepter_telegram_id)
+        accepter_id = accepter.get("id")
+        if not isinstance(accepter_id, str):
+            raise ValueError("Accepter missing id")
+
+        if accepter_id == initiator_id:
+            raise ValueError("You cannot accept your own invite")
+
+        # Unclaimed invite: counterparty_id == initiator_id
+        if counterparty_id == initiator_id:
+            updated = await self.pb.update_record(
+                "deals",
+                deal_id,
+                {"counterparty_id": accepter_id, "status": DealStatus.CONFIRMED.value},
+            )
+            return {"deal": updated, "initiator_id": initiator_id, "counterparty_id": accepter_id}
+
+        # Already claimed: allow the same counterparty to re-open without error.
+        if counterparty_id == accepter_id:
+            if deal.get("status") != DealStatus.CONFIRMED.value:
+                updated = await self.pb.deal_update_status(deal_id, DealStatus.CONFIRMED.value)
+            else:
+                updated = deal
+            return {"deal": updated, "initiator_id": initiator_id, "counterparty_id": accepter_id}
+
+        raise ValueError("This invite has already been accepted by someone else")
+
     async def confirm_deal(self, deal_id: str, confirmer_telegram_id: int) -> dict:
         deal = await self.get_deal(deal_id)
         if not deal:
@@ -64,6 +148,10 @@ class DealService:
 
         if deal.get("status") != DealStatus.PENDING.value:
             raise ValueError(f"Deal is not pending. Current status: {deal.get('status')}")
+
+        # DM invite deals are created "unclaimed" (counterparty_id == initiator_id).
+        if deal.get("counterparty_id") == deal.get("initiator_id"):
+            raise ValueError("This deal invite has not been accepted yet. Send the invite link to the other party.")
 
         confirmer = await self.reputation.get_member(confirmer_telegram_id)
         if not confirmer:

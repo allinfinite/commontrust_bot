@@ -102,6 +102,23 @@ async def cmd_complete(message: Message) -> None:
             f"Both parties can now leave a review with /review {deal_id} rating(1-5) [comment]",
             parse_mode="HTML",
         )
+
+        # DM-first UX: send each party a direct review deep-link in private messages.
+        try:
+            me = await message.bot.get_me()
+            if me.username:
+                link = f"https://t.me/{me.username}?start=review_{deal_id}"
+                initiator_tid, counterparty_tid = await deal_service.get_deal_participant_telegram_ids(deal_id)
+                review_msg = (
+                    "Leave a review for your completed deal:\n\n"
+                    f"<b>Deal ID:</b> <code>{deal_id}</code>\n"
+                    f"{link}"
+                )
+                for tid in {initiator_tid, counterparty_tid}:
+                    await message.bot.send_message(tid, review_msg, parse_mode="HTML")
+        except Exception:
+            # Best-effort: don't fail /complete if DMing fails.
+            pass
     except ValueError as e:
         await message.answer(f"Failed to complete deal: {e}")
     except Exception as e:
