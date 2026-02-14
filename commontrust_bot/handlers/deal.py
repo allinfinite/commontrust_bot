@@ -25,7 +25,7 @@ async def cmd_deal(message: Message) -> None:
 
     args = message.text.split(maxsplit=2)
     if len(args) < 2:
-        await message.answer("Usage: /deal <description>")
+        await message.answer("Usage: /deal description")
         return
 
     description = args[1] if len(args) == 2 else args[1] + " " + args[2]
@@ -64,7 +64,7 @@ async def cmd_deal(message: Message) -> None:
 async def cmd_confirm(message: Message) -> None:
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
-        await message.answer("Usage: /confirm <deal_id>")
+        await message.answer("Usage: /confirm deal_id")
         return
 
     deal_id = args[1].strip()
@@ -88,7 +88,7 @@ async def cmd_confirm(message: Message) -> None:
 async def cmd_complete(message: Message) -> None:
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
-        await message.answer("Usage: /complete <deal_id>")
+        await message.answer("Usage: /complete deal_id")
         return
 
     deal_id = args[1].strip()
@@ -99,7 +99,7 @@ async def cmd_complete(message: Message) -> None:
             f"Deal completed!\n\n"
             f"<b>Deal ID:</b> {deal_id}\n"
             f"<b>Status:</b> Completed\n\n"
-            f"Both parties can now leave a review with /review {deal_id} <rating> [comment]",
+            f"Both parties can now leave a review with /review {deal_id} rating(1-5) [comment]",
             parse_mode="HTML",
         )
     except ValueError as e:
@@ -112,7 +112,7 @@ async def cmd_complete(message: Message) -> None:
 async def cmd_cancel(message: Message) -> None:
     args = message.text.split(maxsplit=2)
     if len(args) < 2:
-        await message.answer("Usage: /cancel <deal_id> [reason]")
+        await message.answer("Usage: /cancel deal_id [reason]")
         return
 
     deal_id = args[1].strip()
@@ -134,7 +134,7 @@ async def cmd_cancel(message: Message) -> None:
 async def cmd_review(message: Message) -> None:
     args = message.text.split(maxsplit=3)
     if len(args) < 3:
-        await message.answer("Usage: /review <deal_id> <rating 1-5> [comment]")
+        await message.answer("Usage: /review deal_id rating(1-5) [comment]")
         return
 
     deal_id = args[1].strip()
@@ -170,7 +170,7 @@ async def cmd_review(message: Message) -> None:
 async def cmd_deal_info(message: Message) -> None:
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
-        await message.answer("Usage: /dealinfo <deal_id>")
+        await message.answer("Usage: /dealinfo deal_id")
         return
 
     deal_id = args[1].strip()

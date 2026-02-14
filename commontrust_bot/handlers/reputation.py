@@ -71,7 +71,7 @@ async def cmd_mydeals(message: Message) -> None:
             description = deal.get("description", "No description")[:30]
             lines.append(f"{emoji} <b>{deal['id'][:8]}</b> - {description}")
 
-        lines.append("\nUse /dealinfo <id> for more details")
+        lines.append("\nUse /dealinfo deal_id for more details")
 
         await message.answer("\n".join(lines), parse_mode="HTML")
     except Exception as e:
@@ -116,7 +116,7 @@ async def cmd_pending(message: Message) -> None:
             description = deal.get("description", "No description")[:40]
             lines.append(f"⏳ <b>{deal['id'][:8]}</b> - {description}")
 
-        lines.append("\nConfirm with /confirm <deal_id>")
+        lines.append("\nConfirm with /confirm deal_id")
 
         await message.answer("\n".join(lines), parse_mode="HTML")
     except Exception as e:
@@ -140,7 +140,7 @@ async def cmd_active(message: Message) -> None:
             description = deal.get("description", "No description")[:40]
             lines.append(f"{emoji} <b>{deal['id'][:8]}</b> - {description}")
 
-        lines.append("\nComplete with /complete <deal_id>")
+        lines.append("\nComplete with /complete deal_id")
 
         await message.answer("\n".join(lines), parse_mode="HTML")
     except Exception as e:

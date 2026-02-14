@@ -34,7 +34,7 @@ async def cmd_pay(message: Message) -> None:
 
     args = message.text.split(maxsplit=2)
     if len(args) < 2:
-        await message.answer("Usage: /pay <amount> [description] (reply to user)")
+        await message.answer("Usage: /pay amount [description] (reply to user)")
         return
 
     try:

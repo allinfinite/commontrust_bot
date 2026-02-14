@@ -106,3 +106,15 @@ async def test_cmd_review_usage(monkeypatch) -> None:
     msg = FakeMessage(text="/review", from_user=FakeUser(1), chat=FakeChat(100, "group"))
     await deal_handlers.cmd_review(msg)  # type: ignore[arg-type]
     assert msg.answers[-1]["text"].startswith("Usage: /review")
+
+
+@pytest.mark.asyncio
+async def test_cmd_help_no_angle_bracket_placeholders(monkeypatch) -> None:
+    # /help previously used angle-bracket placeholders which break HTML parse mode.
+    from commontrust_bot.handlers import basic as basic_handlers
+
+    msg = FakeMessage(text="/help", from_user=FakeUser(1), chat=FakeChat(100, "private"))
+    await basic_handlers.cmd_help(msg)  # type: ignore[arg-type]
+    text = msg.answers[-1]["text"]
+    assert "<description>" not in text
+    assert "<deal_id>" not in text

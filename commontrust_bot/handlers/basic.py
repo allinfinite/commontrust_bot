@@ -25,13 +25,13 @@ async def cmd_help(message: Message) -> None:
 /help - Show this help message
 
 <b>Deals</b>
-/deal @user <description> - Create a new deal
-/confirm <deal_id> - Confirm a pending deal
-/complete <deal_id> - Mark a deal as completed
-/review <deal_id> <rating 1-5> [comment] - Review a completed deal
+/deal (reply) description - Create a new deal
+/confirm deal_id - Confirm a pending deal
+/complete deal_id - Mark a deal as completed
+/review deal_id rating(1-5) [comment] - Review a completed deal
 
 <b>Credit</b>
-/pay @user <amount> [description] - Send credits to user
+/pay (reply) amount [description] - Send credits to user
 /balance - Check your credit balance
 
 <b>Reputation</b>
@@ -40,10 +40,10 @@ async def cmd_help(message: Message) -> None:
 
 <b>Admin</b>
 /enable_credit - Enable mutual credit in group
-/warn @user <reason> - Warn a user
-/mute @user <duration> <reason> - Mute a user
-/ban @user <reason> - Ban a user
-/freeze @user <reason> - Freeze user's credit account
+/warn (reply) reason - Warn a user
+/mute (reply) duration_hours [reason] - Mute a user
+/ban (reply) reason - Ban a user
+/freeze (reply) reason - Freeze user's credit account
 /verify @user - Verify a member
 """
     await message.answer(help_text, parse_mode="HTML")

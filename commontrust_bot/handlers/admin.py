@@ -107,7 +107,7 @@ async def cmd_mute(message: Message) -> None:
 
     args = message.text.split(maxsplit=2)
     if len(args) < 2:
-        await message.answer("Usage: /mute <duration_hours> [reason]")
+        await message.answer("Usage: /mute duration_hours [reason]")
         return
 
     try:
@@ -293,7 +293,7 @@ async def cmd_setcredit(message: Message) -> None:
 
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
-        await message.answer("Usage: /setcredit <amount>")
+        await message.answer("Usage: /setcredit amount")
         return
 
     try:
