@@ -265,10 +265,11 @@ async def maybe_capture_review_comment(message: Message) -> None:
             or (user_reviews_url(username) if isinstance(username, str) else None)
         )
         if url:
+            profile_block = f"\n\nReviewed user:\n{html.quote(profile_url)}" if profile_url else ""
             await message.answer(
                 "Review submitted. Thanks!\n\n"
                 f"View on web:\n{html.quote(url)}"
-                f"{f'\\n\\nReviewed user:\\n{html.quote(profile_url)}' if profile_url else ''}",
+                f"{profile_block}",
                 parse_mode="HTML",
             )
         else:
