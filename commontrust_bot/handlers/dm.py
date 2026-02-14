@@ -35,10 +35,14 @@ async def cmd_newdeal(message: Message) -> None:
         return
 
     description = args[1].strip()
-    result = await deal_service.create_invite_deal(
-        initiator_telegram_id=message.from_user.id,
-        description=description,
-    )
+    try:
+        result = await deal_service.create_invite_deal(
+            initiator_telegram_id=message.from_user.id,
+            description=description,
+        )
+    except Exception as e:
+        await message.answer(f"Failed to create deal invite: {e}")
+        return
     deal = result["deal"]
     deal_id = deal.get("id")
     if not isinstance(deal_id, str):

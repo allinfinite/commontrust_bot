@@ -84,7 +84,9 @@ class DealService:
         # DM-first flow: create an "unclaimed" deal invite by setting counterparty_id=initiator_id.
         # The first non-initiator who opens the invite deep-link will claim it.
         initiator = await self.reputation.get_or_create_member(initiator_telegram_id)
-        group = await self.pb.group_get_or_create(0, "DM")
+        # PocketBase can treat `0` as "blank" for required number fields in some setups.
+        # Use a stable sentinel value that won't collide with real Telegram group IDs.
+        group = await self.pb.group_get_or_create(-1, "Direct Messages")
 
         initiator_id = initiator.get("id")
         if not isinstance(initiator_id, str):
@@ -303,7 +305,7 @@ class DealService:
 
         member_id = member.get("id")
         filter_str = f'(initiator_id="{member_id}" || counterparty_id="{member_id}") && status="pending"'
-        result = await self.pb.list_records("deals", filter=filter_str, sort="-created")
+        result = await self.pb.list_records("deals", filter=filter_str, sort="-created_at")
         return result.get("items", [])
 
     async def get_active_deals_for_user(self, telegram_id: int) -> list[dict]:
@@ -313,7 +315,7 @@ class DealService:
 
         member_id = member.get("id")
         filter_str = f'(initiator_id="{member_id}" || counterparty_id="{member_id}") && (status="confirmed" || status="in_progress")'
-        result = await self.pb.list_records("deals", filter=filter_str, sort="-created")
+        result = await self.pb.list_records("deals", filter=filter_str, sort="-created_at")
         return result.get("items", [])
 
 
