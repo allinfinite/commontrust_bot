@@ -201,9 +201,10 @@ The bot requires these collections (import `pb_schema.json`):
 
 ## Website (Reviews Viewer)
 
-There is a small Next.js website for browsing reviews at `web/` (designed for Vercel).
+There is a small Next.js website for browsing reviews at `web/` and it now runs in the same Docker stack as the bot and PocketBase (ideal for Coolify).
 
-- Setup instructions: `web/README.md`
+- Setup/deploy instructions: `web/README.md`
+- Local stack starts all services (`bot`, `web`, `pocketbase`) via `docker-compose up -d`.
 
 ## How It Works
 
