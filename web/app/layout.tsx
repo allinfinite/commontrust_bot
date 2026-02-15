@@ -10,7 +10,7 @@ const plex = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "600", "700"], 
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Trust Ledger | Big Island Bulletin",
+  title: "Trust Ledger | CommonTrust Bot",
   description: "A public community trust ledger powered by CommonTrust",
   metadataBase: new URL("https://trust.bigislandbulletin.com")
 };
@@ -22,12 +22,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="topbar" role="banner">
           <div className="topbarInner">
             <div className="brand">
-              <a href="https://bigislandbulletin.com" className="brandLink" aria-label="Big Island Bulletin home">
-                <img className="brandLogo" src="/bib-logo.png" alt="" width={44} height={44} />
-                <span className="brandTitle" style={{ fontFamily: "var(--font-title), ui-serif, serif" }}>
-                  Big Island Bulletin
-                </span>
-              </a>
+              <div className="brandLink" aria-label="Brand">
+                <img className="brandLogo" src="/commontrust-bot-logo.jpg" alt="" width={44} height={44} />
+                <div className="brandText">
+                  <div className="brandKicker">
+                    <a href="https://bigislandbulletin.com" className="brandKickerLink" target="_blank" rel="noreferrer">
+                      Big Island Bulletin
+                    </a>{" "}
+                    presents
+                  </div>
+                  <div className="brandTitle" style={{ fontFamily: "var(--font-title), ui-serif, serif" }}>
+                    CommonTrust Bot
+                  </div>
+                </div>
+              </div>
               <div className="brandMeta">
                 <span className="brandSection">Trust Ledger</span>
                 <span className="brandSub">Public reputation filings</span>
