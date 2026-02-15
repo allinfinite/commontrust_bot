@@ -104,7 +104,8 @@ python -m commontrust_bot.main
 ### Credit Commands
 | Command | Description |
 |---------|-------------|
-| `/pay <amount> [description]` | Send credits (reply to user) |
+| `/pay <amount> [description]` | Send credits by replying to a user |
+| `/pay @username <amount> [description]` | Send credits by mentioning a username |
 | `/balance` | Check your credit balance |
 | `/transactions` | View recent transactions |
 
@@ -120,7 +121,7 @@ python -m commontrust_bot.main
 ### Admin Commands
 | Command | Description |
 |---------|-------------|
-| `/enable_credit [name] [symbol]` | Enable mutual credit in group |
+| `/enable_credit [name] [symbol]` | Enable mutual credit in group (or update currency unit) |
 | `/warn @user <reason>` | Warn a user |
 | `/mute @user <hours> <reason>` | Mute a user |
 | `/ban @user <reason>` | Ban a user |

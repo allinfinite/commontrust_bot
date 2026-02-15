@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from aiogram import Router, html
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -6,6 +8,12 @@ from commontrust_bot.services.mutual_credit import InsufficientCreditError, mutu
 from commontrust_bot.services.reputation import reputation_service
 
 router = Router()
+
+def _normalize_username(username: str | None) -> str | None:
+    if not username:
+        return None
+    value = username.strip().lstrip("@").lower()
+    return value or None
 
 
 async def get_mc_group_for_chat(chat_id: int) -> dict | None:
@@ -28,24 +36,54 @@ async def cmd_pay(message: Message) -> None:
         await message.answer("This command can only be used in a group with mutual credit enabled.")
         return
 
-    if not message.reply_to_message:
-        await message.answer("Reply to a user's message to send them credits.")
-        return
-
-    args = message.text.split(maxsplit=2)
+    args = (message.text or "").split(maxsplit=3)
     if len(args) < 2:
-        await message.answer("Usage: /pay amount [description] (reply to user)")
+        await message.answer("Usage: /pay <amount> [description] OR /pay @username <amount> [description]")
         return
 
-    try:
-        amount = int(args[1])
-    except ValueError:
-        await message.answer("Amount must be a number.")
-        return
+    payee = None
+    amount = None
+    description = None
 
-    description = args[2] if len(args) > 2 else None
+    if args[1].startswith("@"):
+        if len(args) < 3:
+            await message.answer("Usage: /pay @username <amount> [description]")
+            return
+        mention = args[1]
+        try:
+            amount = int(args[2])
+        except ValueError:
+            await message.answer("Amount must be a number.")
+            return
 
-    payee = message.reply_to_message.from_user
+        description = args[3] if len(args) > 3 else None
+        from commontrust_bot.pocketbase_client import pb_client
+
+        payee_member = await pb_client.member_get_by_username(mention)
+        if not payee_member:
+            await message.answer(
+                f"User {mention} was not found. Ask them to send a message first so I can register their username."
+            )
+            return
+
+        payee = SimpleNamespace(
+            id=payee_member.get("telegram_id"),
+            username=payee_member.get("username"),
+            full_name=payee_member.get("display_name") or f"@{payee_member.get('username')}",
+        )
+    else:
+        if not message.reply_to_message:
+            await message.answer("Reply to a user's message or use /pay @username <amount> [description].")
+            return
+        try:
+            amount = int(args[1])
+        except ValueError:
+            await message.answer("Amount must be a number.")
+            return
+
+        description = args[2] if len(args) > 2 else None
+        payee = message.reply_to_message.from_user
+
     if payee.id == message.from_user.id:
         await message.answer("You cannot send credits to yourself.")
         return
