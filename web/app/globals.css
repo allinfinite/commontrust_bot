@@ -73,36 +73,25 @@ main {
   flex-direction: column;
 }
 
-.brandLink {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* Legacy brand styles (pre-banner). Kept to avoid churn, but unused in the header now. */
+.brandLink { display: flex; align-items: center; gap: 10px; }
+.brandText { display: flex; flex-direction: column; gap: 2px; }
+.brandKicker { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+.brandKickerLink { text-decoration: underline; text-underline-offset: 3px; }
+.brandLogo { width: 44px; height: 44px; object-fit: contain; border-radius: 10px; background: rgba(255, 255, 255, 0.55); border: 1px solid var(--hairline); }
+
+.brandBannerLink {
+  display: block;
 }
 
-.brandText {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.brandKicker {
-  font-size: 12px;
-  color: var(--muted);
-  letter-spacing: 0.06em;
-}
-
-.brandKickerLink {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.brandLogo {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.55);
+.brandBanner {
+  display: block;
+  width: min(560px, 100%);
+  height: auto;
+  border-radius: 16px;
   border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 24px rgba(16, 17, 20, 0.10);
 }
 
 .brandTitle {

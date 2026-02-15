@@ -30,20 +30,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="topbar" role="banner">
           <div className="topbarInner">
             <div className="brand">
-              <div className="brandLink" aria-label="Brand">
-                <img className="brandLogo" src="/commontrust-bot-logo.jpg" alt="" width={44} height={44} />
-                <div className="brandText">
-                  <div className="brandKicker">
-                    <a href="https://bigislandbulletin.com" className="brandKickerLink" target="_blank" rel="noreferrer">
-                      Big Island Bulletin
-                    </a>{" "}
-                    presents
-                  </div>
-                  <div className="brandTitle" style={{ fontFamily: "var(--font-title), ui-serif, serif" }}>
-                    CommonTrust Bot
-                  </div>
-                </div>
-              </div>
+              <Link href="/" className="brandBannerLink" aria-label="Trust Ledger home">
+                <img className="brandBanner" src="/logo-banner.png" alt="CommonTrust Bot" width={768} height={512} />
+              </Link>
               <div className="brandMeta">
                 <span className="brandSection">Trust Ledger</span>
                 <span className="brandSub">Public reputation filings</span>
