@@ -15,6 +15,26 @@ services:
     networks:
       - commontrust-network
 
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: commontrust-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - POCKETBASE_URL=http://pocketbase:8090
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - commontrust-network
+
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
     container_name: pocketbase

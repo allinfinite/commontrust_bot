@@ -1,4 +1,4 @@
-# Trust Reviews Website (Vercel)
+# Trust Reviews Website (Coolify / Docker)
 
 This is a small Next.js site for viewing CommonTrust user reviews stored in PocketBase.
 
@@ -27,27 +27,43 @@ You have 2 options:
 - Configure PocketBase API rules to allow read access for these collections.
 
 2) Private collections with a server-only token
-- Set `POCKETBASE_API_TOKEN` in Vercel env (do not use `NEXT_PUBLIC_*`).
+- Set `POCKETBASE_API_TOKEN` in container environment (do not use `NEXT_PUBLIC_*`).
 - Keep collections private.
 
-## Deploy to Vercel (trust.bigislandbulletin.com)
+## Run with Docker Compose (same container stack)
 
-1) Create a new Vercel project and import this repo.
-2) In the Vercel project settings set **Root Directory** to `web`.
-3) Add env vars:
-- `POCKETBASE_URL` = your PocketBase base URL (example: `https://pb.bigislandbulletin.com`)
-- Optional: `POCKETBASE_API_TOKEN` if using private collections.
-4) Deploy.
-5) Add the custom domain `trust.bigislandbulletin.com` to the project in Vercel.
-6) Update DNS for `bigislandbulletin.com`:
-- Create a `CNAME` record for `trust` pointing to the target Vercel shows in the domain setup (often `cname.vercel-dns.com`).
+From repository root:
+
+```bash
+docker-compose up -d --build
+```
+
+Services:
+- Website: http://localhost:3000
+- PocketBase: http://localhost:8090
+
+The `web` service is configured to talk to PocketBase over the internal Docker network (`http://pocketbase:8090`).
+
+## Deploy on Coolify
+
+Use this repo as a Docker Compose deployment in Coolify.
+
+1) Create a new **Docker Compose** resource in Coolify.
+2) Point it to this repository.
+3) Set environment variables in Coolify (from `.env` + web vars below):
+- `POCKETBASE_URL` (for public links/sitemap; external URL recommended in production)
+- Optional: `POCKETBASE_API_TOKEN` for private-read mode
+- `POCKETBASE_ADMIN_TOKEN` for admin pages/actions
+- `ADMIN_PASSWORD` and `ADMIN_COOKIE_SECRET` to enable `/admin`
+4) Expose the `web` service on your desired domain (e.g. `trust.yourdomain.com`).
+5) Deploy.
 
 ## Admin Page
 
 There is a password-protected admin page at `/admin`.
 
 It uses:
-- `ADMIN_PASSWORD` (set in Vercel env as sensitive)
-- `ADMIN_COOKIE_SECRET` (random secret, set in Vercel env as sensitive)
+- `ADMIN_PASSWORD`
+- `ADMIN_COOKIE_SECRET`
 
 Without both env vars, `/admin` will not be accessible.
