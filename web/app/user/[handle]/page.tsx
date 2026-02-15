@@ -148,7 +148,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
     redirect(`/user/${encodeURIComponent(String(member.telegram_id))}`);
   }
 
-  const [reputation, reviewsAbout] = await Promise.all([
+  const [reputation, reviewsAbout, reviewsByMember] = await Promise.all([
     getReputation(member.id),
     pbList<ReviewRecord>("reviews", {
       perPage: 30,
@@ -156,27 +156,87 @@ export default async function UserPage(props: { params: Promise<{ handle: string
       filter: `reviewee_id='${escapePbString(member.id)}'`,
       expand: "reviewer_id,reviewee_id,deal_id",
       revalidateSeconds: 60
+    }),
+    pbList<ReviewRecord>("reviews", {
+      perPage: 200,
+      sort: "-created_at",
+      filter: `reviewer_id='${escapePbString(member.id)}' || reviewee_id='${escapePbString(member.id)}'`,
+      expand: "reviewer_id,reviewee_id",
+      revalidateSeconds: 60
     })
   ]);
 
   const title = member.display_name?.trim() || (member.username ? `@${member.username}` : `ID ${member.telegram_id}`);
+  const profileName = member.display_name?.trim() || "Unknown name";
+  const profileImageUrl =
+    (member as MemberRecord & { profile_image_url?: string | null; photo_url?: string | null }).profile_image_url ??
+    (member as MemberRecord & { profile_image_url?: string | null; photo_url?: string | null }).photo_url ??
+    null;
+  const usernameHistory = new Set<string>();
+
+  if (member.username) usernameHistory.add(member.username.toLowerCase());
+  for (const review of reviewsByMember.items) {
+    if (review.reviewer_id === member.id && review.reviewer_username) {
+      usernameHistory.add(review.reviewer_username.toLowerCase());
+    }
+    if (review.reviewee_id === member.id && review.reviewee_username) {
+      usernameHistory.add(review.reviewee_username.toLowerCase());
+    }
+  }
+
+  const usernames = Array.from(usernameHistory).sort();
+  const avatarInitial = (profileName || member.username || "?").trim().slice(0, 1).toUpperCase() || "?";
 
   return (
     <>
-      <div className="row">
-        <h1 style={{ margin: 0, fontFamily: "var(--font-title), ui-serif, serif", fontSize: 38 }}>
-          {title}
-        </h1>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {member.verified ? (
-            <span className="pill" style={{ borderColor: "rgba(89,255,168,0.25)", color: "var(--good)" }}>
-              Verified
-            </span>
-          ) : (
-            <span className="pill">Unverified</span>
-          )}
-          {member.username ? <span className="pill">@{member.username}</span> : null}
-          <span className="pill">Telegram ID: {member.telegram_id}</span>
+      <div className="row" style={{ alignItems: "flex-start", gap: 14 }}>
+        {profileImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={profileImageUrl}
+            alt={`${profileName} profile`}
+            style={{ width: 70, height: 70, borderRadius: "50%", objectFit: "cover", border: "1px solid var(--line)" }}
+          />
+        ) : (
+          <div
+            aria-hidden
+            style={{
+              width: 70,
+              height: 70,
+              borderRadius: "50%",
+              display: "grid",
+              placeItems: "center",
+              border: "1px solid var(--line)",
+              fontWeight: 800,
+              fontSize: 24,
+              color: "var(--text)"
+            }}
+          >
+            {avatarInitial}
+          </div>
+        )}
+
+        <div style={{ flex: 1, minWidth: 260 }}>
+          <h1 style={{ margin: 0, fontFamily: "var(--font-title), ui-serif, serif", fontSize: 38 }}>{title}</h1>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+            <span className="pill">Profile name: {profileName}</span>
+            {member.verified ? (
+              <span className="pill" style={{ borderColor: "rgba(89,255,168,0.25)", color: "var(--good)" }}>
+                Verified
+              </span>
+            ) : (
+              <span className="pill">Unverified</span>
+            )}
+            {member.username ? <span className="pill">Current username: @{member.username}</span> : null}
+            <span className="pill">Telegram ID: {member.telegram_id}</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            {usernames.length > 0 ? usernames.map((u) => <span key={u} className="pill">@{u}</span>) : <span className="muted">No known usernames yet.</span>}
+          </div>
+          <div className="muted" style={{ marginTop: 6 }}>
+            Known username history
+          </div>
         </div>
       </div>
 
