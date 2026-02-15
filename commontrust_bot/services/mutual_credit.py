@@ -17,6 +17,14 @@ class MutualCreditService:
     ) -> dict:
         mc_group = await self.pb.mc_group_get(group_id)
         if mc_group:
+            should_update = (
+                mc_group.get("currency_name") != currency_name
+                or mc_group.get("currency_symbol") != currency_symbol
+            )
+            if should_update:
+                return await self.pb.mc_group_update_currency(
+                    mc_group.get("id"), currency_name, currency_symbol
+                )
             return mc_group
         return await self.pb.mc_group_create(group_id, currency_name, currency_symbol)
 

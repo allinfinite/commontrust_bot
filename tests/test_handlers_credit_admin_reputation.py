@@ -55,6 +55,39 @@ async def test_enable_credit_happy_path(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_enable_credit_updates_existing_currency(monkeypatch) -> None:
+    pb = FakePocketBase()
+    rep = ReputationService(pb=pb)
+    mc = MutualCreditService(pb=pb, reputation=rep)
+
+    monkeypatch.setattr(admin_handlers, "pb_client", pb)
+    monkeypatch.setattr(admin_handlers, "mutual_credit_service", mc)
+    monkeypatch.setattr(admin_handlers, "reputation_service", rep)
+    monkeypatch.setattr(settings, "admin_user_ids", [1], raising=False)
+
+    first = FakeMessage(
+        text="/enable_credit Credit Cr",
+        from_user=FakeUser(1),
+        chat=FakeChat(100, "group", "G"),
+    )
+    await admin_handlers.cmd_enable_credit(first)  # type: ignore[arg-type]
+
+    second = FakeMessage(
+        text="/enable_credit Hours h",
+        from_user=FakeUser(1),
+        chat=FakeChat(100, "group", "G"),
+    )
+    await admin_handlers.cmd_enable_credit(second)  # type: ignore[arg-type]
+
+    group = await pb.group_get(telegram_id=100)
+    assert group is not None
+    mc_group = await pb.mc_group_get(group["id"])
+    assert mc_group is not None
+    assert mc_group["currency_name"] == "Hours"
+    assert mc_group["currency_symbol"] == "h"
+
+
+@pytest.mark.asyncio
 async def test_pay_requires_mc_enabled(monkeypatch) -> None:
     pb = FakePocketBase()
     rep = ReputationService(pb=pb)
@@ -109,6 +142,60 @@ async def test_pay_happy_path(monkeypatch) -> None:
 
     await credit_handlers.cmd_pay(msg)  # type: ignore[arg-type]
     assert "Payment successful" in msg.answers[-1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_pay_by_username_mention(monkeypatch) -> None:
+    pb = FakePocketBase()
+    rep = ReputationService(pb=pb)
+    mc = MutualCreditService(pb=pb, reputation=rep)
+
+    import commontrust_bot.pocketbase_client as pb_mod
+
+    monkeypatch.setattr(pb_mod, "pb_client", pb)
+    monkeypatch.setattr(credit_handlers, "mutual_credit_service", mc)
+    monkeypatch.setattr(credit_handlers, "reputation_service", rep)
+
+    group = await pb.group_get_or_create(telegram_id=100, title="G", mc_enabled=True)
+    await pb.mc_group_create(group_id=group["id"], currency_name="Hours", currency_symbol="h")
+
+    await rep.get_or_create_member(2, username="payee", display_name="Payee")
+
+    msg = FakeMessage(
+        text="/pay @payee 10 lunch",
+        from_user=FakeUser(1, username="payer", full_name="Payer"),
+        chat=FakeChat(100, "group"),
+    )
+
+    await credit_handlers.cmd_pay(msg)  # type: ignore[arg-type]
+    out = msg.answers[-1]["text"]
+    assert "Payment successful" in out
+    assert "10 h" in out
+
+
+@pytest.mark.asyncio
+async def test_pay_by_username_unknown_user(monkeypatch) -> None:
+    pb = FakePocketBase()
+    rep = ReputationService(pb=pb)
+    mc = MutualCreditService(pb=pb, reputation=rep)
+
+    import commontrust_bot.pocketbase_client as pb_mod
+
+    monkeypatch.setattr(pb_mod, "pb_client", pb)
+    monkeypatch.setattr(credit_handlers, "mutual_credit_service", mc)
+    monkeypatch.setattr(credit_handlers, "reputation_service", rep)
+
+    group = await pb.group_get_or_create(telegram_id=100, title="G", mc_enabled=True)
+    await pb.mc_group_create(group_id=group["id"], currency_name="Credit", currency_symbol="Cr")
+
+    msg = FakeMessage(
+        text="/pay @unknown 10",
+        from_user=FakeUser(1, username="payer", full_name="Payer"),
+        chat=FakeChat(100, "group"),
+    )
+
+    await credit_handlers.cmd_pay(msg)  # type: ignore[arg-type]
+    assert "was not found" in msg.answers[-1]["text"]
 
 
 @pytest.mark.asyncio

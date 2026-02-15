@@ -149,6 +149,12 @@ class PocketBaseClient:
     async def member_get(self, telegram_id: int) -> dict[str, Any] | None:
         return await self.get_first("members", f"telegram_id={telegram_id}")
 
+    async def member_get_by_username(self, username: str) -> dict[str, Any] | None:
+        username_norm = username.strip().lstrip("@").lower()
+        if not username_norm:
+            return None
+        return await self.get_first("members", f'username="{username_norm}"')
+
     async def group_get_or_create(
         self, telegram_id: int, title: str, mc_enabled: bool = False
     ) -> dict[str, Any]:
@@ -247,6 +253,15 @@ class PocketBaseClient:
         return await self.create_record(
             "mc_groups",
             {"group_id": group_id, "currency_name": currency_name, "currency_symbol": currency_symbol},
+        )
+
+    async def mc_group_update_currency(
+        self, mc_group_id: str, currency_name: str, currency_symbol: str
+    ) -> dict[str, Any]:
+        return await self.update_record(
+            "mc_groups",
+            mc_group_id,
+            {"currency_name": currency_name, "currency_symbol": currency_symbol},
         )
 
     async def mc_account_get(self, mc_group_id: str, member_id: str) -> dict[str, Any] | None:
