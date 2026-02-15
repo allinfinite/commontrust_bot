@@ -42,6 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link className="pill" href="/reviews">
                   All reviews
                 </Link>
+                <a className="btn btnPrimary" href="https://t.me/commontrust_bot" target="_blank" rel="noreferrer">
+                  Open Telegram Bot
+                </a>
               </nav>
               <SearchBox />
             </div>
