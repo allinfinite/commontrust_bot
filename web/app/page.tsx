@@ -19,9 +19,7 @@ export default async function HomePage() {
   return (
     <>
       <div className="row">
-          <h1 style={{ margin: 0, fontFamily: "var(--font-title), ui-serif, serif", fontSize: 40, letterSpacing: 0.2 }}>
-            Reviews
-          </h1>
+          <h1 className="pageTitle">Reviews</h1>
         <Link className="pill" href="/reviews">
           Browse all reviews
         </Link>
