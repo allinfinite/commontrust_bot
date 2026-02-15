@@ -35,7 +35,7 @@ a {
 main {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 28px 16px 56px;
+  padding: 20px 14px 48px;
 }
 
 .topbar {
@@ -50,17 +50,19 @@ main {
 .topbarInner {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 14px 16px;
+  padding: 12px 14px;
   display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
+  gap: 10px;
+  align-items: stretch;
+  justify-content: flex-start;
+  flex-direction: column;
 }
 
 .brand {
   display: flex;
-  gap: 10px;
-  align-items: baseline;
+  gap: 4px;
+  align-items: flex-start;
+  flex-direction: column;
 }
 
 .brandTitle {
@@ -75,8 +77,9 @@ main {
 
 .search {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  gap: 8px;
+  align-items: stretch;
+  flex-wrap: wrap;
 }
 
 .input {
@@ -85,7 +88,9 @@ main {
   border-radius: 12px;
   padding: 10px 12px;
   color: var(--text);
-  width: min(360px, 56vw);
+  width: 100%;
+  min-width: 0;
+  flex: 1;
   outline: none;
 }
 
@@ -102,6 +107,7 @@ main {
   border-radius: 12px;
   cursor: pointer;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .btn:hover {
@@ -129,8 +135,24 @@ main {
 .row {
   display: flex;
   gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-direction: column;
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-title), ui-serif, serif;
+  font-size: clamp(1.9rem, 7vw, 2.5rem);
+  letter-spacing: 0.2px;
+}
+
+.rowBetween {
+  width: 100%;
+  display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -190,14 +212,58 @@ main {
 .footer {
   max-width: 1040px;
   margin: 0 auto;
-  padding: 22px 16px 36px;
+  padding: 18px 14px 30px;
   color: var(--muted);
   font-size: 13px;
 }
 
-@media (max-width: 640px) {
+@media (min-width: 700px) {
+  main {
+    padding: 28px 16px 56px;
+  }
+
+  .topbarInner {
+    padding: 14px 16px;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .brand {
+    gap: 10px;
+    align-items: baseline;
+    flex-direction: row;
+  }
+
+  .search {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .input {
+    flex: initial;
+    width: min(360px, 56vw);
+  }
+
+  .row {
+    align-items: baseline;
+    justify-content: space-between;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .footer {
+    padding: 22px 16px 36px;
+  }
+}
+
+@media (max-width: 699px) {
+  .search > .btn {
+    width: 100%;
+  }
+
   .kpi {
     grid-template-columns: 1fr;
   }
 }
-
