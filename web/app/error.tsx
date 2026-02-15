@@ -7,7 +7,6 @@ export default function ErrorPage(props: { error: Error & { digest?: string }; r
   const { error } = props;
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error(error);
   }, [error]);
 
@@ -31,4 +30,3 @@ export default function ErrorPage(props: { error: Error & { digest?: string }; r
     </div>
   );
 }
-
