@@ -18,17 +18,20 @@ export default async function HomePage() {
 
   return (
     <>
+      <div className="hero">
+        <span className="heroEyebrow">Big Island Bulletin</span>
+        <h1 className="pageTitle">Community Trust Ledger</h1>
+        <p className="pageSubtitle">
+          Verified deals, transparent ratings, and community reputation — styled for island-friendly, mobile-first browsing.
+        </p>
+      </div>
+
       <div className="row">
-          <h1 style={{ margin: 0, fontFamily: "var(--font-title), ui-serif, serif", fontSize: 40, letterSpacing: 0.2 }}>
-            Reviews
-          </h1>
+        <div className="pill">Latest reviews</div>
         <Link className="pill" href="/reviews">
           Browse all reviews
         </Link>
       </div>
-      <p className="muted" style={{ marginTop: 8 }}>
-        View reputation and deal reviews created by the CommonTrust Telegram bot.
-      </p>
 
       {!reviewsRes.ok ? (
         <div className="card">
