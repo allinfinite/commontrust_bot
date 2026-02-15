@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Sans } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 
 import { SearchBox } from "./searchbox";
-
-const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-title" });
-const plex = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--font-body" });
 
 export const metadata: Metadata = {
   title: "Trust Reviews",
@@ -16,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${plex.variable}`}>
+    <html lang="en" style={{ ["--font-title" as string]: "ui-serif, Georgia, serif", ["--font-body" as string]: "ui-sans-serif, system-ui, sans-serif" }}>
       <body style={{ fontFamily: "var(--font-body), ui-sans-serif, system-ui" }}>
         <div className="topbar">
           <div className="topbarInner">
@@ -38,4 +34,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
