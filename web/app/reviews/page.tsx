@@ -21,9 +21,7 @@ export default async function ReviewsPage(props: { searchParams?: Promise<{ q?: 
   return (
     <>
       <div className="row">
-        <h1 style={{ margin: 0, fontFamily: "var(--font-title), ui-serif, serif", fontSize: 36 }}>
-          All Reviews
-        </h1>
+        <h1 className="pageTitle">All Reviews</h1>
         <span className="pill">Total: {reviews.totalItems.toLocaleString("en-US")}</span>
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
@@ -81,7 +79,7 @@ export default async function ReviewsPage(props: { searchParams?: Promise<{ q?: 
         })}
       </div>
 
-      <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginTop: 14, flexWrap: "wrap" }}>
+      <div className="rowBetween" style={{ marginTop: 14 }}>
         <div className="muted">
           Page {reviews.page} of {reviews.totalPages}
         </div>

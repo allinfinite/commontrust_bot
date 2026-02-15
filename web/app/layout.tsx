@@ -21,18 +21,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="topbar">
           <div className="topbarInner">
             <div className="brand">
-              <Link href="/" className="brandTitle" style={{ fontFamily: "var(--font-title), ui-serif, serif" }}>
-                Trust Reviews
-              </Link>
-              <span className="brandSub">Big Island Bulletin</span>
+              <div className="brandBadge" aria-hidden>🌺</div>
+              <div className="brandMeta">
+                <Link href="/" className="brandTitle" style={{ fontFamily: "var(--font-title), ui-serif, serif" }}>
+                  Trust Reviews
+                </Link>
+                <span className="brandSub">Big Island Bulletin Network</span>
+              </div>
             </div>
             <SearchBox />
           </div>
         </div>
         <main>{children}</main>
         <div className="footer">
-          Data shown here comes from the CommonTrust PocketBase backend. For new reviews, use the Telegram bot flow
-          (deals and confirmations).
+          Built for the Big Island Bulletin community. Data shown here comes from the CommonTrust PocketBase backend.
+          For new reviews, use the Telegram bot flow (deals and confirmations).
         </div>
       </body>
     </html>

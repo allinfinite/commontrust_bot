@@ -64,9 +64,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
     return (
       <>
         <div className="row">
-          <h1 style={{ margin: 0, fontFamily: "var(--font-title), ui-serif, serif", fontSize: 38 }}>
-            @{h}
-          </h1>
+          <h1 className="pageTitle">@{h}</h1>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <span className="pill">Username profile</span>
           </div>
@@ -217,7 +215,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
         )}
 
         <div style={{ flex: 1, minWidth: 260 }}>
-          <h1 style={{ margin: 0, fontFamily: "var(--font-title), ui-serif, serif", fontSize: 38 }}>{title}</h1>
+          <h1 className="pageTitle">{title}</h1>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
             <span className="pill">Profile name: {profileName}</span>
             {member.verified ? (

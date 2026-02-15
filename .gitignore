@@ -71,3 +71,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+# Keep Next.js helper libs tracked
+!web/lib/
+!web/lib/**
+
