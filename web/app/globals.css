@@ -73,6 +73,21 @@ main {
   flex-direction: column;
 }
 
+.brandLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandLogo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--hairline);
+}
+
 .brandTitle {
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -547,6 +562,10 @@ main {
     gap: 8px;
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .brandLink {
+    gap: 12px;
   }
 
   .brandTitle {

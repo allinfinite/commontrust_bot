@@ -22,9 +22,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="topbar" role="banner">
           <div className="topbarInner">
             <div className="brand">
-              <Link href="/" className="brandTitle" style={{ fontFamily: "var(--font-title), ui-serif, serif" }}>
-                Big Island Bulletin
-              </Link>
+              <a href="https://bigislandbulletin.com" className="brandLink" aria-label="Big Island Bulletin home">
+                <img className="brandLogo" src="/bib-logo.png" alt="" width={44} height={44} />
+                <span className="brandTitle" style={{ fontFamily: "var(--font-title), ui-serif, serif" }}>
+                  Big Island Bulletin
+                </span>
+              </a>
               <div className="brandMeta">
                 <span className="brandSection">Trust Ledger</span>
                 <span className="brandSub">Public reputation filings</span>
@@ -46,8 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main>{children}</main>
         <div className="footer">
-          Data shown here comes from the CommonTrust PocketBase backend. For new reviews, use the Telegram bot flow
-          (deals and confirmations).
+          <a href="https://bigislandbulletin.com">Big Island Bulletin</a>
         </div>
       </body>
     </html>
