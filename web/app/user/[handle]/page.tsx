@@ -41,12 +41,63 @@ async function getReputation(memberId: string): Promise<ReputationRecord | null>
   return rep.items[0] ?? null;
 }
 
+function avgRatingFromReviews(reviews: ReviewRecord[]): number | null {
+  // Mirrors backend aggregation: "one vote per reviewer".
+  const buckets = new Map<string, number[]>();
+  for (const r of reviews) {
+    if (!r.reviewer_id || typeof r.rating !== "number") continue;
+    const arr = buckets.get(r.reviewer_id) ?? [];
+    arr.push(r.rating);
+    buckets.set(r.reviewer_id, arr);
+  }
+  const perReviewer: number[] = [];
+  for (const rs of buckets.values()) {
+    if (rs.length === 0) continue;
+    perReviewer.push(rs.reduce((a, b) => a + b, 0) / rs.length);
+  }
+  if (perReviewer.length === 0) return null;
+  return perReviewer.reduce((a, b) => a + b, 0) / perReviewer.length;
+}
+
 export default async function UserPage(props: { params: Promise<{ handle: string }> }) {
   const { handle } = await props.params;
   const h = handle.trim().replace(/^@/, "");
   if (!h) notFound();
 
   const member = await findMemberByHandle(h);
+
+  async function filterToFullyReviewedDeals(reviews: ReviewRecord[]): Promise<ReviewRecord[]> {
+    const dealIds = Array.from(new Set(reviews.map((r) => r.deal_id).filter((id): id is string => typeof id === "string" && id.length > 0)));
+    if (dealIds.length === 0) return reviews;
+
+    // Match backend visibility rules:
+    // Only expose reviews once both parties have reviewed the deal (>= 2 distinct reviewers).
+    const filter = dealIds.map((id) => `deal_id='${escapePbString(id)}'`).join(" || ");
+    const dealReviews = await pbList<Pick<ReviewRecord, "deal_id" | "reviewer_id">>("reviews", {
+      perPage: 200,
+      filter: `(${filter})`,
+      fields: "deal_id,reviewer_id",
+      revalidateSeconds: 60
+    });
+
+    const reviewersByDeal = new Map<string, Set<string>>();
+    for (const r of dealReviews.items) {
+      if (!r.deal_id || !r.reviewer_id) continue;
+      let s = reviewersByDeal.get(r.deal_id);
+      if (!s) {
+        s = new Set<string>();
+        reviewersByDeal.set(r.deal_id, s);
+      }
+      s.add(r.reviewer_id);
+    }
+
+    const fullyReviewedDealIds = new Set<string>();
+    for (const [dealId, reviewers] of reviewersByDeal.entries()) {
+      if (reviewers.size >= 2) fullyReviewedDealIds.add(dealId);
+    }
+
+    return reviews.filter((r) => fullyReviewedDealIds.has(r.deal_id));
+  }
 
   // If we can't resolve a member record (e.g. legacy data missing username),
   // fall back to username-based review lookup.
@@ -60,6 +111,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
       expand: "reviewer_id,reviewee_id,deal_id",
       revalidateSeconds: 60
     });
+    const visibleReviewsAbout = await filterToFullyReviewedDeals(reviewsAbout.items);
 
     return (
       <>
@@ -78,15 +130,15 @@ export default async function UserPage(props: { params: Promise<{ handle: string
         </div>
 
         <div className="grid" style={{ marginTop: 12 }}>
-          {reviewsAbout.items.length === 0 ? (
+          {visibleReviewsAbout.length === 0 ? (
             <div className="card">
               <div style={{ fontWeight: 800 }}>No reviews found</div>
               <div className="muted" style={{ marginTop: 6 }}>
-                This can happen if older records were created before usernames were stored.
+                Reviews only appear after both parties have reviewed the deal.
               </div>
             </div>
           ) : (
-            reviewsAbout.items.map((r) => {
+            visibleReviewsAbout.map((r) => {
               const reviewer = r.expand?.reviewer_id;
               const reviewee = r.expand?.reviewee_id;
               const deal = r.expand?.deal_id;
@@ -163,6 +215,9 @@ export default async function UserPage(props: { params: Promise<{ handle: string
       revalidateSeconds: 60
     })
   ]);
+  const visibleReviewsAbout = await filterToFullyReviewedDeals(reviewsAbout.items);
+  const computedAvgRating = avgRatingFromReviews(visibleReviewsAbout);
+  const avgToShow = computedAvgRating ?? reputation?.avg_rating ?? null;
 
   const title = member.display_name?.trim() || (member.username ? `@${member.username}` : `ID ${member.telegram_id}`);
   const profileName = member.display_name?.trim() || "Unknown name";
@@ -241,7 +296,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
       <div className="kpi">
         <div className="kpiItem">
           <div className="kpiLabel">Average rating</div>
-          <div className="kpiValue">{reputation?.avg_rating?.toFixed(2) ?? "—"}</div>
+          <div className="kpiValue">{avgToShow !== null ? avgToShow.toFixed(2) : "—"}</div>
         </div>
         <div className="kpiItem">
           <div className="kpiLabel">Verified deals</div>
@@ -249,7 +304,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
         </div>
         <div className="kpiItem">
           <div className="kpiLabel">Reviews (shown)</div>
-          <div className="kpiValue">{reviewsAbout.totalItems}</div>
+          <div className="kpiValue">{visibleReviewsAbout.length}</div>
         </div>
       </div>
 
@@ -261,15 +316,15 @@ export default async function UserPage(props: { params: Promise<{ handle: string
       </div>
 
       <div className="grid" style={{ marginTop: 12 }}>
-        {reviewsAbout.items.length === 0 ? (
+        {visibleReviewsAbout.length === 0 ? (
           <div className="card">
             <div style={{ fontWeight: 800 }}>No reviews yet</div>
             <div className="muted" style={{ marginTop: 6 }}>
-              Reviews appear after deals are completed and reviewed in the Telegram bot.
+              Reviews only appear after both parties have reviewed the deal.
             </div>
           </div>
         ) : (
-          reviewsAbout.items.map((r) => {
+          visibleReviewsAbout.map((r) => {
             const reviewer = r.expand?.reviewer_id;
             const reviewee = r.expand?.reviewee_id;
             const deal = r.expand?.deal_id;

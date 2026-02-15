@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from enum import Enum
 
@@ -283,7 +284,13 @@ class DealService:
             reviewee_username=reviewee.get("username") if isinstance(reviewee, dict) else None,
         )
 
-        await self.reputation.calculate_reputation(reviewee_id)
+        # Recompute for both participants:
+        # When the second party submits their review, the deal becomes "fully reviewed"
+        # and the other party's incoming review becomes visible for reputation purposes.
+        await asyncio.gather(
+            self.reputation.calculate_reputation(initiator_id),
+            self.reputation.calculate_reputation(counterparty_id),
+        )
 
         return {
             "review": review,
