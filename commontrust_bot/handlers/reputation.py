@@ -32,8 +32,7 @@ async def cmd_reputation(message: Message) -> None:
             f"<b>User:</b> {html.bold(target_user.full_name)}\n"
             f"<b>Verified Deals:</b> {rep.get('verified_deals', 0)}\n"
             f"<b>Average Rating:</b> {stars} ({rating:.1f}/5)\n"
-            f"<b>Total Reviews:</b> {rep.get('total_reviews', 0)}\n"
-            f"<b>Credit Limit:</b> {stats.get('credit_limit', 0)} Cr",
+            f"<b>Total Reviews:</b> {rep.get('total_reviews', 0)}",
             parse_mode="HTML",
         )
     except Exception as e:
