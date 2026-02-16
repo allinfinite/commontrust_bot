@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from commontrust_api.config import api_settings
-from commontrust_bot.pocketbase_client import PocketBaseClient
+from commontrust_api.pocketbase_client import PocketBaseClient
 
 
 def make_pb_client() -> PocketBaseClient:
@@ -12,4 +12,3 @@ def make_pb_client() -> PocketBaseClient:
         admin_email=api_settings.pocketbase_admin_email,
         admin_password=api_settings.pocketbase_admin_password,
     )
-

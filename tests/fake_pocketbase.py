@@ -262,10 +262,34 @@ class FakePocketBase:
             data["credit_limit"] = credit_limit
         return await self.update_record("mc_accounts", account_id, data)
 
-    async def mc_transaction_create(self, mc_group_id: str, payer_id: str, payee_id: str, amount: int, description: str | None = None):
+    async def mc_transaction_get_by_idempotency(
+        self, mc_group_id: str, idempotency_key: str
+    ) -> dict[str, Any] | None:
+        if not idempotency_key:
+            return None
+        return await self.get_first(
+            "mc_transactions", f'mc_group_id="{mc_group_id}" && idempotency_key="{idempotency_key}"'
+        )
+
+    async def mc_transaction_create(
+        self,
+        mc_group_id: str,
+        payer_id: str,
+        payee_id: str,
+        amount: int,
+        description: str | None = None,
+        idempotency_key: str | None = None,
+    ):
         return await self.create_record(
             "mc_transactions",
-            {"mc_group_id": mc_group_id, "payer_id": payer_id, "payee_id": payee_id, "amount": amount, "description": description},
+            {
+                "mc_group_id": mc_group_id,
+                "payer_id": payer_id,
+                "payee_id": payee_id,
+                "amount": amount,
+                "description": description,
+                "idempotency_key": idempotency_key,
+            },
         )
 
     async def mc_entry_create(self, transaction_id: str, account_id: str, amount: int, balance_after: int):

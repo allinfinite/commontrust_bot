@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "commontrust-bot"
+name = "open-trust-credit"
 version = "1.0.0"
-description = "Federated Reputation and Mutual Credit System for Telegram"
+description = "Federated mutual credit Telegram bot and ledger API"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -30,12 +30,11 @@ dev = [
 ]
 
 [project.scripts]
-commontrust-bot = "commontrust_bot.main:run"
 commontrust-credit-bot = "commontrust_credit_bot.main:run"
 commontrust-api = "commontrust_api.main:run"
 
 [tool.hatch.build.targets.wheel]
-packages = ["commontrust_bot", "commontrust_credit_bot", "commontrust_api"]
+packages = ["commontrust_credit_bot", "commontrust_api"]
 
 [tool.ruff]
 line-length = 100

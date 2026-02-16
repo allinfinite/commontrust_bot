@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
 
 from commontrust_api.config import api_settings
 from commontrust_api.hub.crypto import decrypt_token
@@ -82,7 +80,7 @@ async def _get_mc_group_id_or_400(pb: Any, telegram_chat_id: int) -> str:
 async def enable_ledger(req: Request, telegram_chat_id: int, payload: EnableLedgerIn) -> dict[str, object]:
     proxied = await _maybe_proxy(req)
     if proxied is not None:
-        return JSONResponse(status_code=proxied.status_code, content=json.loads(proxied.body or b"{}"))
+        return proxied  # type: ignore[return-value]
 
     pb = req.app.state.pb
     group = await pb.group_get_or_create(
@@ -104,6 +102,8 @@ async def enable_ledger(req: Request, telegram_chat_id: int, payload: EnableLedg
 async def get_balance(req: Request, telegram_chat_id: int, telegram_user_id: int) -> BalanceOut:
     proxied = await _maybe_proxy(req)
     if proxied is not None:
+        if proxied.status_code >= 400:
+            return proxied  # type: ignore[return-value]
         return BalanceOut.model_validate_json(proxied.body)
 
     pb = req.app.state.pb
@@ -124,6 +124,8 @@ async def get_balance(req: Request, telegram_chat_id: int, telegram_user_id: int
 async def create_payment(req: Request, telegram_chat_id: int, payload: PaymentIn) -> PaymentOut:
     proxied = await _maybe_proxy(req)
     if proxied is not None:
+        if proxied.status_code >= 400:
+            return proxied  # type: ignore[return-value]
         return PaymentOut.model_validate_json(proxied.body)
 
     pb = req.app.state.pb
@@ -161,7 +163,7 @@ async def get_transactions(
 ) -> dict[str, object]:
     proxied = await _maybe_proxy(req)
     if proxied is not None:
-        return json.loads(proxied.body or b"{}")
+        return proxied  # type: ignore[return-value]
 
     pb = req.app.state.pb
     mc_group_id = await _get_mc_group_id_or_400(pb, telegram_chat_id)
@@ -209,7 +211,7 @@ async def get_transactions(
 async def set_account(req: Request, telegram_chat_id: int, telegram_user_id: int, payload: SetAccountIn) -> dict[str, object]:
     proxied = await _maybe_proxy(req)
     if proxied is not None:
-        return json.loads(proxied.body or b"{}")
+        return proxied  # type: ignore[return-value]
 
     pb = req.app.state.pb
     mc_group_id = await _get_mc_group_id_or_400(pb, telegram_chat_id)
@@ -223,6 +225,8 @@ async def set_account(req: Request, telegram_chat_id: int, telegram_user_id: int
 async def verify_zero_sum(req: Request, telegram_chat_id: int) -> ZeroSumOut:
     proxied = await _maybe_proxy(req)
     if proxied is not None:
+        if proxied.status_code >= 400:
+            return proxied  # type: ignore[return-value]
         return ZeroSumOut.model_validate_json(proxied.body)
 
     pb = req.app.state.pb

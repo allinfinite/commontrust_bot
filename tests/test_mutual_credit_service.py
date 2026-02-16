@@ -1,7 +1,7 @@
 import pytest
 
-from commontrust_bot.services.mutual_credit import InsufficientCreditError, MutualCreditService
-from commontrust_bot.services.reputation import ReputationService
+from commontrust_api.ledger.service import InsufficientCreditError, MutualCreditService
+from commontrust_api.reputation.service import ReputationService
 
 
 @pytest.mark.asyncio
@@ -15,8 +15,8 @@ async def test_create_payment_happy_path(fake_pb) -> None:
 
     result = await mc.create_payment(
         mc_group_id=group["id"],
-        payer_member_id=payer["id"],
-        payee_member_id=payee["id"],
+        payer_member_record_id=payer["id"],
+        payee_member_record_id=payee["id"],
         amount=50,
         description="hello",
     )
@@ -40,7 +40,9 @@ async def test_create_payment_insufficient_credit(fake_pb) -> None:
     payee = await fake_pb.create_record("members", {"telegram_id": 2})
 
     with pytest.raises(InsufficientCreditError):
-        await mc.create_payment(group["id"], payer["id"], payee["id"], amount=10_000)
+        await mc.create_payment(
+            group["id"], payer["id"], payee["id"], amount=10_000  # type: ignore[arg-type]
+        )
 
 
 @pytest.mark.asyncio
@@ -51,6 +53,5 @@ async def test_update_credit_limit(fake_pb) -> None:
     group = await fake_pb.create_record("mc_groups", {"group_id": "g1"})
     member = await fake_pb.create_record("members", {"telegram_id": 1})
 
-    updated = await mc.update_credit_limit(group["id"], member["id"], new_limit=7)
+    updated = await mc.update_credit_limit(group["id"], member["id"], new_limit=7)  # type: ignore[arg-type]
     assert updated["credit_limit"] == 7
-
