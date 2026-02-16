@@ -28,6 +28,50 @@ async function findMember(handle: string): Promise<MemberRecord | null> {
   return list.items[0] ?? null;
 }
 
+function Badge({ text, color, bg, border }: { text: string; color: string; bg: string; border: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        padding: "6px 14px",
+        borderRadius: 999,
+        background: bg,
+        border: `2px solid ${border}`,
+        color,
+        fontSize: 16,
+        fontWeight: 800,
+        fontFamily: "monospace",
+        textTransform: "uppercase",
+        letterSpacing: "0.1em",
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+function StatBlock({ label, value, valueColor }: { label: string; value: string; valueColor: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div
+        style={{
+          display: "flex",
+          fontSize: 14,
+          fontFamily: "monospace",
+          color: "rgba(16,17,20,0.45)",
+          textTransform: "uppercase",
+          letterSpacing: "0.1em",
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ display: "flex", fontSize: 28, fontWeight: 800, color: valueColor }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default async function OgImage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const member = await findMember(handle);
@@ -61,10 +105,18 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
   const isScammer = member?.scammer === true;
   const isVerified = member?.verified === true;
 
-  const starsFull = avgRating !== null ? Math.round(avgRating) : 0;
+  // Build badge element
+  let badge: React.ReactNode = null;
+  if (isScammer) {
+    badge = <Badge text="Confirmed Scammer" color="#b00020" bg="rgba(176,0,32,0.12)" border="rgba(176,0,32,0.4)" />;
+  } else if (isVerified) {
+    badge = <Badge text="Verified" color="#0b7a46" bg="rgba(11,122,70,0.08)" border="rgba(11,122,70,0.3)" />;
+  }
+
+  const ratingDisplay = avgRating !== null ? avgRating.toFixed(2) : "—";
   const starsDisplay = avgRating !== null
-    ? "★".repeat(starsFull) + "☆".repeat(5 - starsFull)
-    : "No ratings yet";
+    ? "★".repeat(Math.round(avgRating)) + "☆".repeat(5 - Math.round(avgRating))
+    : "";
 
   return new ImageResponse(
     (
@@ -85,6 +137,7 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
         {/* Top accent bar */}
         <div
           style={{
+            display: "flex",
             position: "absolute",
             top: 0,
             left: 0,
@@ -94,9 +147,11 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
           }}
         />
 
+        {/* Upper section: kicker + identity */}
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div
             style={{
+              display: "flex",
               fontFamily: "monospace",
               fontSize: 16,
               letterSpacing: "0.2em",
@@ -131,9 +186,11 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
               {(displayName || "?").slice(0, 1).toUpperCase()}
             </div>
 
+            {/* Name + badge + username */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div
                 style={{
+                  display: "flex",
                   fontSize: 52,
                   fontWeight: 800,
                   lineHeight: 1.1,
@@ -148,43 +205,11 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
               </div>
 
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                {isScammer && (
+                {badge}
+                {member?.username ? (
                   <div
                     style={{
-                      padding: "6px 14px",
-                      borderRadius: 999,
-                      background: "rgba(176,0,32,0.12)",
-                      border: "2px solid rgba(176,0,32,0.4)",
-                      color: "#b00020",
-                      fontSize: 16,
-                      fontWeight: 800,
-                      fontFamily: "monospace",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                    }}
-                  >
-                    Confirmed Scammer
-                  </div>
-                )}
-                {!isScammer && isVerified && (
-                  <div
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: 999,
-                      background: "rgba(11,122,70,0.08)",
-                      border: "2px solid rgba(11,122,70,0.3)",
-                      color: "#0b7a46",
-                      fontSize: 16,
-                      fontWeight: 700,
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    Verified
-                  </div>
-                )}
-                {member?.username && (
-                  <div
-                    style={{
+                      display: "flex",
                       fontSize: 20,
                       color: "rgba(16,17,20,0.5)",
                       fontFamily: "monospace",
@@ -192,7 +217,7 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
                   >
                     @{member.username}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -204,6 +229,7 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <div
                 style={{
+                  display: "flex",
                   fontSize: 14,
                   fontFamily: "monospace",
                   color: "rgba(16,17,20,0.45)",
@@ -213,57 +239,30 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
               >
                 Rating
               </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#b61b2e" }}>
-                {avgRating !== null ? avgRating.toFixed(2) : "—"}
+              <div style={{ display: "flex", fontSize: 28, fontWeight: 800, color: "#b61b2e" }}>
+                {ratingDisplay}
               </div>
-              <div
-                style={{
-                  fontSize: 22,
-                  letterSpacing: 2,
-                  color: avgRating !== null ? "#b61b2e" : "rgba(16,17,20,0.25)",
-                }}
-              >
-                {starsDisplay}
-              </div>
+              {starsDisplay ? (
+                <div
+                  style={{
+                    display: "flex",
+                    fontSize: 22,
+                    letterSpacing: 2,
+                    color: "#b61b2e",
+                  }}
+                >
+                  {starsDisplay}
+                </div>
+              ) : null}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div
-                style={{
-                  fontSize: 14,
-                  fontFamily: "monospace",
-                  color: "rgba(16,17,20,0.45)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                Verified Deals
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "rgba(16,17,20,0.85)" }}>
-                {verifiedDeals ?? "—"}
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div
-                style={{
-                  fontSize: 14,
-                  fontFamily: "monospace",
-                  color: "rgba(16,17,20,0.45)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                Reviews
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "rgba(16,17,20,0.85)" }}>
-                {reviewCount}
-              </div>
-            </div>
+            <StatBlock label="Verified Deals" value={verifiedDeals != null ? String(verifiedDeals) : "—"} valueColor="rgba(16,17,20,0.85)" />
+            <StatBlock label="Reviews" value={String(reviewCount)} valueColor="rgba(16,17,20,0.85)" />
           </div>
 
           <div
             style={{
+              display: "flex",
               fontSize: 14,
               fontFamily: "monospace",
               color: "rgba(16,17,20,0.35)",
