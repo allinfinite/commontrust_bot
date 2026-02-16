@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { escapePbString } from "@/lib/pocketbase";
-import { pbAdminList } from "@/lib/pocketbase_admin";
+import { pbAdminDelete, pbAdminList } from "@/lib/pocketbase_admin";
 import { formatDate, memberLabel } from "@/lib/ui";
 
 type Member = { id: string; username?: string; display_name?: string; telegram_id?: number };
@@ -17,6 +17,13 @@ type Deal = {
 };
 
 export const dynamic = "force-dynamic";
+
+async function deleteDealAction(formData: FormData) {
+  "use server";
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await pbAdminDelete("deals", id);
+}
 
 export default async function AdminDealsPage(props: {
   searchParams?: Promise<{ page?: string; status?: string; q?: string }>;
@@ -103,10 +110,16 @@ export default async function AdminDealsPage(props: {
                 {memberLabel(a)} ↔ {memberLabel(b)}
               </div>
               {d.description ? <div style={{ marginTop: 8 }}>{d.description}</div> : null}
-              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <Link className="pill" href={`/admin/deals/${encodeURIComponent(d.id)}`}>
                   View / edit
                 </Link>
+                <form action={deleteDealAction}>
+                  <input type="hidden" name="id" value={d.id} />
+                  <button className="btn" type="submit" style={{ borderColor: "rgba(255,92,124,0.35)" }}>
+                    Delete
+                  </button>
+                </form>
               </div>
             </div>
           );
