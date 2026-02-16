@@ -12,10 +12,13 @@ license = "MIT"
 authors = [{ name = "CommonTrust Team" }]
 dependencies = [
     "aiogram>=3.4.0",
+    "cryptography>=42.0.0",
+    "fastapi>=0.110.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.26.0",
+    "uvicorn>=0.27.0",
 ]
 
 [project.optional-dependencies]
@@ -28,9 +31,11 @@ dev = [
 
 [project.scripts]
 commontrust-bot = "commontrust_bot.main:run"
+commontrust-credit-bot = "commontrust_credit_bot.main:run"
+commontrust-api = "commontrust_api.main:run"
 
 [tool.hatch.build.targets.wheel]
-packages = ["commontrust_bot"]
+packages = ["commontrust_bot", "commontrust_credit_bot", "commontrust_api"]
 
 [tool.ruff]
 line-length = 100

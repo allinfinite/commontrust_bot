@@ -14,6 +14,44 @@ services:
         condition: service_healthy
     networks:
       - commontrust-network
+    command: ["python", "-m", "commontrust_bot.main"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: commontrust-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+      - PORT=8000
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - commontrust-network
+    command: ["python", "-m", "commontrust_api.main"]
+
+  credit-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: commontrust-credit-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - COMMONTRUST_API_BASE_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - commontrust-network
+    command: ["python", "-m", "commontrust_credit_bot.main"]
 
   web:
     build:

@@ -12,7 +12,7 @@ async def cmd_start(message: Message) -> None:
     await message.answer(
         f"Welcome to CommonTrust Bot, {html.bold(message.from_user.full_name)}!\n\n"
         "This bot helps you build reputation through verified deals and participate "
-        "in mutual credit systems within your Telegram groups.\n\n"
+        "in verified deals within your Telegram groups.\n\n"
         "Use /help to see available commands."
     )
 
@@ -34,19 +34,16 @@ async def cmd_help(message: Message) -> None:
 /review deal_id rating(1-5) [comment] - Review a completed deal
 
 <b>Credit</b>
-/pay (reply) amount [description] - Send credits to user
-/balance - Check your credit balance
+Mutual credit commands are handled by the separate Mutual Credit Bot.
 
 <b>Reputation</b>
 /reputation - View your reputation stats
 /mydeals - List your deals
 
 <b>Admin</b>
-/enable_credit - Enable mutual credit in group
 /warn (reply) reason - Warn a user
 /mute (reply) duration_hours [reason] - Mute a user
 /ban (reply) reason - Ban a user
-/freeze (reply) reason - Freeze user's credit account
 /verify @user - Verify a member
 """
     await message.answer(help_text, parse_mode="HTML")

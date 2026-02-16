@@ -356,6 +356,11 @@
         "required": false
       },
       {
+        "name": "idempotency_key",
+        "type": "text",
+        "required": false
+      },
+      {
         "name": "created_at",
         "type": "autodate",
         "required": false,
@@ -454,6 +459,39 @@
     "indexes": [
       "CREATE INDEX idx_sanctions_member ON sanctions (member_id)",
       "CREATE INDEX idx_sanctions_active ON sanctions (is_active)"
+    ]
+  }
+  ,
+  {
+    "name": "ledger_remotes",
+    "type": "base",
+    "schema": [
+      {
+        "name": "telegram_chat_id",
+        "type": "number",
+        "required": true,
+        "unique": true
+      },
+      {
+        "name": "base_url",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "token_encrypted",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "created_at",
+        "type": "autodate",
+        "required": false,
+        "onCreate": true,
+        "onUpdate": false
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_ledger_remotes_chat ON ledger_remotes (telegram_chat_id)"
     ]
   }
 ]

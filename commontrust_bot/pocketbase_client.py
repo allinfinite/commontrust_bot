@@ -14,8 +14,18 @@ class PocketBaseError(Exception):
 
 
 class PocketBaseClient:
-    def __init__(self, base_url: str | None = None):
+    def __init__(
+        self,
+        base_url: str | None = None,
+        admin_token: str | None = None,
+        admin_email: str | None = None,
+        admin_password: str | None = None,
+    ):
+        # Allow callers (API service) to provide isolated credentials; default to bot settings.
         self.base_url = base_url or settings.pocketbase_url
+        self.admin_token = admin_token
+        self.admin_email = admin_email
+        self.admin_password = admin_password
         self.token: str | None = None
         self._client: httpx.AsyncClient | None = None
 
@@ -32,11 +42,16 @@ class PocketBaseClient:
 
     async def authenticate(self) -> None:
         # Preferred: use a long-lived admin/superuser token (API key) from env.
-        if settings.pocketbase_admin_token and settings.pocketbase_admin_token.strip():
-            self.token = settings.pocketbase_admin_token.strip()
+        admin_token = self.admin_token if self.admin_token is not None else settings.pocketbase_admin_token
+        if admin_token and admin_token.strip():
+            self.token = admin_token.strip()
             return
 
-        if not settings.pocketbase_admin_email or not settings.pocketbase_admin_password:
+        admin_email = self.admin_email if self.admin_email is not None else settings.pocketbase_admin_email
+        admin_password = (
+            self.admin_password if self.admin_password is not None else settings.pocketbase_admin_password
+        )
+        if not admin_email or not admin_password:
             raise PocketBaseError(
                 "Missing PocketBase credentials. Set POCKETBASE_ADMIN_TOKEN (preferred) "
                 "or POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD."
@@ -46,8 +61,8 @@ class PocketBaseClient:
         response = await self.client.post(
             url,
             json={
-                "identity": settings.pocketbase_admin_email,
-                "password": settings.pocketbase_admin_password,
+                "identity": admin_email,
+                "password": admin_password,
             },
         )
         if response.status_code != 200:
@@ -160,6 +175,8 @@ class PocketBaseClient:
     ) -> dict[str, Any]:
         existing = await self.get_first("groups", f"telegram_id={telegram_id}")
         if existing:
+            if mc_enabled and not existing.get("mc_enabled"):
+                return await self.update_record("groups", existing["id"], {"mc_enabled": True})
             return existing
         return await self.create_record(
             "groups", {"telegram_id": telegram_id, "title": title, "mc_enabled": mc_enabled}
@@ -285,8 +302,23 @@ class PocketBaseClient:
             data["credit_limit"] = credit_limit
         return await self.update_record("mc_accounts", account_id, data)
 
+    async def mc_transaction_get_by_idempotency(
+        self, mc_group_id: str, idempotency_key: str
+    ) -> dict[str, Any] | None:
+        if not idempotency_key:
+            return None
+        return await self.get_first(
+            "mc_transactions", f'mc_group_id="{mc_group_id}" && idempotency_key="{idempotency_key}"'
+        )
+
     async def mc_transaction_create(
-        self, mc_group_id: str, payer_id: str, payee_id: str, amount: int, description: str | None = None
+        self,
+        mc_group_id: str,
+        payer_id: str,
+        payee_id: str,
+        amount: int,
+        description: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         return await self.create_record(
             "mc_transactions",
@@ -296,6 +328,7 @@ class PocketBaseClient:
                 "payee_id": payee_id,
                 "amount": amount,
                 "description": description,
+                "idempotency_key": idempotency_key,
             },
         )
 
@@ -344,6 +377,24 @@ class PocketBaseClient:
 
     async def sanction_deactivate(self, sanction_id: str) -> dict[str, Any]:
         return await self.update_record("sanctions", sanction_id, {"is_active": False})
+
+    # Hub mode: per-chat remote ledger config (stored in PB).
+    async def ledger_remote_get(self, telegram_chat_id: int) -> dict[str, Any] | None:
+        return await self.get_first("ledger_remotes", f"telegram_chat_id={telegram_chat_id}")
+
+    async def ledger_remote_upsert(
+        self, telegram_chat_id: int, base_url: str, token_encrypted: str
+    ) -> dict[str, Any]:
+        existing = await self.ledger_remote_get(telegram_chat_id)
+        data = {"telegram_chat_id": telegram_chat_id, "base_url": base_url, "token_encrypted": token_encrypted}
+        if existing and existing.get("id"):
+            return await self.update_record("ledger_remotes", existing["id"], data)
+        return await self.create_record("ledger_remotes", data)
+
+    async def ledger_remote_delete(self, telegram_chat_id: int) -> None:
+        existing = await self.ledger_remote_get(telegram_chat_id)
+        if existing and existing.get("id"):
+            await self.delete_record("ledger_remotes", existing["id"])
 
 
 pb_client = PocketBaseClient()
