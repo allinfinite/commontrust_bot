@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -7,6 +8,40 @@ import type { DealRecord, ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(
+  props: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await props.params;
+  const dealId = id.trim();
+  let deal: DealRecord | null = null;
+  try {
+    deal = await pbGet<DealRecord>("deals", dealId, { revalidateSeconds: 60 });
+  } catch {
+    // fall through
+  }
+  if (!deal && process.env.POCKETBASE_ADMIN_TOKEN) {
+    try {
+      deal = await pbAdminGet<DealRecord>("deals", dealId);
+    } catch {
+      // not found
+    }
+  }
+  if (!deal) return { title: "Deal Not Found" };
+
+  const desc = deal.description
+    ? (deal.description.length > 140 ? deal.description.slice(0, 140) + "..." : deal.description)
+    : "View deal details and reviews on Trust Ledger.";
+
+  return {
+    title: `Deal ${dealId.slice(0, 8)}`,
+    description: desc,
+    openGraph: {
+      title: `Deal Details — Trust Ledger`,
+      description: desc,
+    },
+  };
+}
 
 function isFullyReviewed(reviews: ReviewRecord[]): boolean {
   const reviewers = new Set<string>();

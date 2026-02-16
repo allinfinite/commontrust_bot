@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -6,6 +7,52 @@ import type { MemberRecord, ReputationRecord, ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(
+  props: { params: Promise<{ handle: string }> }
+): Promise<Metadata> {
+  const { handle } = await props.params;
+  const member = await findMemberByHandle(handle);
+  const h = handle.trim().replace(/^@/, "");
+
+  if (!member) {
+    return {
+      title: `@${h} — Trader Profile`,
+      description: `View the reputation and trade history for @${h} on Trust Ledger.`,
+    };
+  }
+
+  const displayName =
+    member.display_name?.trim() ||
+    (member.username ? `@${member.username}` : `ID ${member.telegram_id}`);
+
+  const rep = await pbList<ReputationRecord>("reputation", {
+    perPage: 1,
+    filter: `member_id='${escapePbString(member.id)}'`,
+    revalidateSeconds: 60,
+  });
+  const avgRating = rep.items[0]?.avg_rating;
+  const verifiedDeals = rep.items[0]?.verified_deals ?? 0;
+
+  const ratingStr = avgRating != null ? `${avgRating.toFixed(1)}/5 rating` : "No ratings yet";
+  const scammerStr = member.scammer ? " [CONFIRMED SCAMMER]" : "";
+  const description = `${displayName}${scammerStr} — ${ratingStr}, ${verifiedDeals} verified deal${verifiedDeals !== 1 ? "s" : ""}. View full trade history and reviews on Trust Ledger.`;
+
+  return {
+    title: `${displayName} — Trader Profile${scammerStr}`,
+    description,
+    openGraph: {
+      title: `${displayName} — Trader Profile on Trust Ledger`,
+      description,
+      type: "profile",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${displayName} — Trader Profile`,
+      description,
+    },
+  };
+}
 
 async function findMemberByHandle(handle: string): Promise<MemberRecord | null> {
   const h = handle.trim().replace(/^@/, "");

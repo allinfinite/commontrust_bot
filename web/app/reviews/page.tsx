@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pbList } from "@/lib/pocketbase";
@@ -5,6 +6,17 @@ import type { ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "All Reviews",
+  description:
+    "Browse all peer-to-peer trade reviews on Trust Ledger. Every filed review is public, transparent, and permanent.",
+  openGraph: {
+    title: "All Reviews — Trust Ledger",
+    description:
+      "Browse all peer-to-peer trade reviews. Every filed review is public, transparent, and permanent.",
+  },
+};
 
 export default async function ReviewsPage(props: { searchParams?: Promise<{ q?: string; page?: string }> }) {
   const sp = (await props.searchParams) ?? {};

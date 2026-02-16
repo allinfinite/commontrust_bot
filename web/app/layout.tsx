@@ -10,9 +10,46 @@ const plex = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "600", "700"], 
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Trust Ledger | CommonTrust Bot",
-  description: "A public community trust ledger powered by CommonTrust",
-  metadataBase: new URL("https://trust.bigislandbulletin.com"),
+  title: {
+    default: "Trust Ledger | CommonTrust",
+    template: "%s | Trust Ledger"
+  },
+  description:
+    "A public, transparent reputation ledger for peer-to-peer trades. Look up any trader's verified deal history, ratings, and reviews before you trade.",
+  metadataBase: new URL("https://commontrust.credit"),
+  keywords: [
+    "trust ledger",
+    "reputation",
+    "peer to peer",
+    "trade reviews",
+    "scam check",
+    "telegram trading",
+    "deal verification",
+    "commontrust"
+  ],
+  authors: [{ name: "Big Island Bulletin", url: "https://bigislandbulletin.com" }],
+  creator: "CommonTrust Bot",
+  publisher: "Big Island Bulletin",
+  openGraph: {
+    type: "website",
+    siteName: "Trust Ledger",
+    title: "Trust Ledger — Transparent Reputation for P2P Trades",
+    description:
+      "Look up any trader's verified deal history, ratings, and reviews. A public community ledger powered by CommonTrust.",
+    url: "https://commontrust.credit",
+    locale: "en_US"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Trust Ledger — Transparent Reputation for P2P Trades",
+    description:
+      "Look up any trader's verified deal history, ratings, and reviews before you trade."
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true }
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },

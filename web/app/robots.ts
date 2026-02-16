@@ -4,9 +4,10 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: "/"
+      allow: "/",
+      disallow: "/admin/"
     },
-    sitemap: "https://trust.bigislandbulletin.com/sitemap.xml"
+    sitemap: "https://commontrust.credit/sitemap.xml"
   };
 }
 

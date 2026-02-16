@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -8,27 +9,69 @@ import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
 
+async function fetchReview(id: string): Promise<ReviewRecord | null> {
+  let r: ReviewRecord | null = null;
+  try {
+    r = await pbGet<ReviewRecord>("reviews", id, {
+      expand: "reviewer_id,reviewee_id,deal_id",
+      revalidateSeconds: 60,
+    });
+  } catch {
+    // Fall through
+  }
+  if (!r && process.env.POCKETBASE_ADMIN_TOKEN) {
+    try {
+      r = await pbAdminGet<ReviewRecord>("reviews", id, "reviewer_id,reviewee_id,deal_id");
+    } catch {
+      // Not found
+    }
+  }
+  return r;
+}
+
+export async function generateMetadata(
+  props: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await props.params;
+  const r = await fetchReview(id.trim());
+  if (!r) {
+    return { title: "Filing Not Found" };
+  }
+
+  const reviewer = r.expand?.reviewer_id;
+  const reviewee = r.expand?.reviewee_id;
+  const reviewerName = reviewer?.display_name || (reviewer?.username ? `@${reviewer.username}` : r.reviewer_username || "Someone");
+  const revieweeName = reviewee?.display_name || (reviewee?.username ? `@${reviewee.username}` : r.reviewee_username || "Someone");
+  const ratingStr = typeof r.rating === "number" ? `${r.rating}/5` : "";
+  const commentSnippet = r.comment ? (r.comment.length > 120 ? r.comment.slice(0, 120) + "..." : r.comment) : "";
+
+  const title = `${reviewerName} reviewed ${revieweeName}${ratingStr ? ` (${ratingStr})` : ""}`;
+  const description = commentSnippet
+    ? `"${commentSnippet}" — ${ratingStr} rating. View the full review on Trust Ledger.`
+    : `${reviewerName} reviewed ${revieweeName} with a ${ratingStr} rating. View details on Trust Ledger.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
+
 export default async function ReviewPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const reviewId = id.trim();
   if (!reviewId) notFound();
 
-  let r: ReviewRecord | null = null;
-  try {
-    r = await pbGet<ReviewRecord>("reviews", reviewId, {
-      expand: "reviewer_id,reviewee_id,deal_id",
-      revalidateSeconds: 60
-    });
-  } catch {
-    // Fall through to admin-token fallback below.
-  }
-  if (!r && process.env.POCKETBASE_ADMIN_TOKEN) {
-    try {
-      r = await pbAdminGet<ReviewRecord>("reviews", reviewId, "reviewer_id,reviewee_id,deal_id");
-    } catch {
-      // Keep notFound behavior below if the record truly doesn't exist or isn't accessible.
-    }
-  }
+  const r = await fetchReview(reviewId);
   if (!r) notFound();
 
   const dealId = r.deal_id;
