@@ -15,11 +15,11 @@ def review_kb(deal_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⭐", callback_data=f"review:{deal_id}:1"),
-                InlineKeyboardButton(text="⭐⭐", callback_data=f"review:{deal_id}:2"),
-                InlineKeyboardButton(text="⭐⭐⭐", callback_data=f"review:{deal_id}:3"),
-                InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data=f"review:{deal_id}:4"),
-                InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data=f"review:{deal_id}:5"),
+                InlineKeyboardButton(text="1", callback_data=f"review:{deal_id}:1"),
+                InlineKeyboardButton(text="2", callback_data=f"review:{deal_id}:2"),
+                InlineKeyboardButton(text="3", callback_data=f"review:{deal_id}:3"),
+                InlineKeyboardButton(text="4", callback_data=f"review:{deal_id}:4"),
+                InlineKeyboardButton(text="5", callback_data=f"review:{deal_id}:5"),
             ]
         ]
     )
