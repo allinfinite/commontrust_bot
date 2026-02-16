@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { escapePbString, pbList } from "@/lib/pocketbase";
+import { pbAdminGet } from "@/lib/pocketbase_admin";
 import type { DealRecord, ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
@@ -20,12 +21,24 @@ export default async function DealPage(props: { params: Promise<{ id: string }> 
   const dealId = id.trim();
   if (!dealId) notFound();
 
-  const dealRes = await pbList<DealRecord>("deals", {
-    perPage: 1,
-    filter: `id='${escapePbString(dealId)}'`,
-    revalidateSeconds: 60
-  });
-  const deal = dealRes.items[0] ?? null;
+  let deal: DealRecord | null = null;
+  try {
+    const dealRes = await pbList<DealRecord>("deals", {
+      perPage: 1,
+      filter: `id='${escapePbString(dealId)}'`,
+      revalidateSeconds: 60
+    });
+    deal = dealRes.items[0] ?? null;
+  } catch {
+    // Fall through to admin-token fallback below.
+  }
+  if (!deal && process.env.POCKETBASE_ADMIN_TOKEN) {
+    try {
+      deal = await pbAdminGet<DealRecord>("deals", dealId);
+    } catch {
+      // Keep notFound behavior below if the record truly doesn't exist or isn't accessible.
+    }
+  }
   if (!deal) notFound();
 
   const reviews = await pbList<ReviewRecord>("reviews", {
@@ -136,4 +149,3 @@ export default async function DealPage(props: { params: Promise<{ id: string }> 
     </>
   );
 }
-

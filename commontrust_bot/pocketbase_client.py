@@ -82,7 +82,18 @@ class PocketBaseClient:
         headers = self._headers()
 
         if method == "GET":
-            response = await self.client.get(url, headers=headers, params=data)
+            params = dict(data or {})
+            # Avoid stale intermediary caches for read-after-write flows (e.g. review gating).
+            params["_ts"] = int(datetime.now().timestamp() * 1000)
+            response = await self.client.get(
+                url,
+                headers={
+                    **headers,
+                    "Cache-Control": "no-cache, no-store, max-age=0",
+                    "Pragma": "no-cache",
+                },
+                params=params,
+            )
         elif method == "POST":
             response = await self.client.post(url, headers=headers, json=data)
         elif method == "PATCH":

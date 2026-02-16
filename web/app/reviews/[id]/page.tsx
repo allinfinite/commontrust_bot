@@ -13,13 +13,18 @@ export default async function ReviewPage(props: { params: Promise<{ id: string }
   const reviewId = id.trim();
   if (!reviewId) notFound();
 
-  const reviewRes = await pbList<ReviewRecord>("reviews", {
-    perPage: 1,
-    filter: `id='${escapePbString(reviewId)}'`,
-    expand: "reviewer_id,reviewee_id,deal_id",
-    revalidateSeconds: 60
-  });
-  let r = reviewRes.items[0] ?? null;
+  let r: ReviewRecord | null = null;
+  try {
+    const reviewRes = await pbList<ReviewRecord>("reviews", {
+      perPage: 1,
+      filter: `id='${escapePbString(reviewId)}'`,
+      expand: "reviewer_id,reviewee_id,deal_id",
+      revalidateSeconds: 60
+    });
+    r = reviewRes.items[0] ?? null;
+  } catch {
+    // Fall through to admin-token fallback below.
+  }
   if (!r && process.env.POCKETBASE_ADMIN_TOKEN) {
     try {
       r = await pbAdminGet<ReviewRecord>("reviews", reviewId, "reviewer_id,reviewee_id,deal_id");
