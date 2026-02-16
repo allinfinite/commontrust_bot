@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
 import { escapePbString, isTelegramUsername, pbList } from "@/lib/pocketbase";
+import { processTextForSatori } from "@/lib/hebrew-rtl";
 import type { MemberRecord, ReputationRecord, ReviewRecord } from "@/lib/types";
 
 export const runtime = "edge";
@@ -74,7 +75,14 @@ function StatBlock({ label, value, valueColor }: { label: string; value: string;
 
 export default async function OgImage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const member = await findMember(handle);
+  let member: MemberRecord | null = null;
+  
+  try {
+    member = await findMember(handle);
+  } catch (err) {
+    // Log but don't crash - return a fallback OG image
+    console.error(`Failed to find member for OG image: ${handle}`, err);
+  }
 
   const displayName =
     member?.display_name?.trim() ||
@@ -85,21 +93,26 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
   let reviewCount = 0;
 
   if (member) {
-    const [rep, reviews] = await Promise.all([
-      pbList<ReputationRecord>("reputation", {
-        perPage: 1,
-        filter: `member_id='${escapePbString(member.id)}'`,
-        revalidateSeconds: 60,
-      }),
-      pbList<ReviewRecord>("reviews", {
-        perPage: 1,
-        filter: `reviewee_id='${escapePbString(member.id)}'`,
-        revalidateSeconds: 60,
-      }),
-    ]);
-    avgRating = rep.items[0]?.avg_rating ?? null;
-    verifiedDeals = rep.items[0]?.verified_deals ?? null;
-    reviewCount = reviews.totalItems;
+    try {
+      const [rep, reviews] = await Promise.all([
+        pbList<ReputationRecord>("reputation", {
+          perPage: 1,
+          filter: `member_id='${escapePbString(member.id)}'`,
+          revalidateSeconds: 60,
+        }),
+        pbList<ReviewRecord>("reviews", {
+          perPage: 1,
+          filter: `reviewee_id='${escapePbString(member.id)}'`,
+          revalidateSeconds: 60,
+        }),
+      ]);
+      avgRating = rep.items[0]?.avg_rating ?? null;
+      verifiedDeals = rep.items[0]?.verified_deals ?? null;
+      reviewCount = reviews.totalItems;
+    } catch (err) {
+      // Log but don't crash - use fallback values
+      console.error(`Failed to fetch reputation data for member ${member.id}:`, err);
+    }
   }
 
   const isScammer = member?.scammer === true;
@@ -198,7 +211,7 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
                   whiteSpace: "nowrap",
                 }}
               >
-                {displayName}
+                {processTextForSatori(displayName)}
               </div>
 
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -212,7 +225,7 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
                       fontFamily: "monospace",
                     }}
                   >
-                    @{member.username}
+                    @{processTextForSatori(member.username)}
                   </div>
                 ) : null}
               </div>

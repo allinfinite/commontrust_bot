@@ -111,39 +111,51 @@ export default async function UserPage(props: { params: Promise<{ handle: string
   const h = handle.trim().replace(/^@/, "");
   if (!h) notFound();
 
-  const member = await findMemberByHandle(h);
+  let member: MemberRecord | null = null;
+  try {
+    member = await findMemberByHandle(h);
+  } catch (err) {
+    // Log but don't crash - fall back to username-based lookup
+    console.error(`Failed to find member by handle: ${h}`, err);
+  }
 
   async function filterToFullyReviewedDeals(reviews: ReviewRecord[]): Promise<ReviewRecord[]> {
     const dealIds = Array.from(new Set(reviews.map((r) => r.deal_id).filter((id): id is string => typeof id === "string" && id.length > 0)));
     if (dealIds.length === 0) return reviews;
 
-    // Match backend visibility rules:
-    // Only expose reviews once both parties have reviewed the deal (>= 2 distinct reviewers).
-    const filter = dealIds.map((id) => `deal_id='${escapePbString(id)}'`).join(" || ");
-    const dealReviews = await pbList<Pick<ReviewRecord, "deal_id" | "reviewer_id">>("reviews", {
-      perPage: 200,
-      filter: `(${filter})`,
-      fields: "deal_id,reviewer_id",
-      revalidateSeconds: 60
-    });
+    try {
+      // Match backend visibility rules:
+      // Only expose reviews once both parties have reviewed the deal (>= 2 distinct reviewers).
+      const filter = dealIds.map((id) => `deal_id='${escapePbString(id)}'`).join(" || ");
+      const dealReviews = await pbList<Pick<ReviewRecord, "deal_id" | "reviewer_id">>("reviews", {
+        perPage: 200,
+        filter: `(${filter})`,
+        fields: "deal_id,reviewer_id",
+        revalidateSeconds: 60
+      });
 
-    const reviewersByDeal = new Map<string, Set<string>>();
-    for (const r of dealReviews.items) {
-      if (!r.deal_id || !r.reviewer_id) continue;
-      let s = reviewersByDeal.get(r.deal_id);
-      if (!s) {
-        s = new Set<string>();
-        reviewersByDeal.set(r.deal_id, s);
+      const reviewersByDeal = new Map<string, Set<string>>();
+      for (const r of dealReviews.items) {
+        if (!r.deal_id || !r.reviewer_id) continue;
+        let s = reviewersByDeal.get(r.deal_id);
+        if (!s) {
+          s = new Set<string>();
+          reviewersByDeal.set(r.deal_id, s);
+        }
+        s.add(r.reviewer_id);
       }
-      s.add(r.reviewer_id);
-    }
 
-    const fullyReviewedDealIds = new Set<string>();
-    for (const [dealId, reviewers] of reviewersByDeal.entries()) {
-      if (reviewers.size >= 2) fullyReviewedDealIds.add(dealId);
-    }
+      const fullyReviewedDealIds = new Set<string>();
+      for (const [dealId, reviewers] of reviewersByDeal.entries()) {
+        if (reviewers.size >= 2) fullyReviewedDealIds.add(dealId);
+      }
 
-    return reviews.filter((r) => fullyReviewedDealIds.has(r.deal_id));
+      return reviews.filter((r) => fullyReviewedDealIds.has(r.deal_id));
+    } catch (err) {
+      console.error("Failed to filter reviews by deal status:", err);
+      // Return all reviews - don't filter by deal status if we can't fetch deals
+      return reviews;
+    }
   }
 
   // If we can't resolve a member record (e.g. legacy data missing username),
@@ -151,14 +163,20 @@ export default async function UserPage(props: { params: Promise<{ handle: string
   if (!member) {
     if (!isTelegramUsername(h)) notFound();
     const u = escapePbString(h.toLowerCase());
-    const reviewsAbout = await pbList<ReviewRecord>("reviews", {
-      perPage: 30,
-      sort: "-created_at",
-      filter: `reviewee_username='${u}'`,
-      expand: "reviewer_id,reviewee_id,deal_id",
-      revalidateSeconds: 60
-    });
-    const visibleReviewsAbout = await filterToFullyReviewedDeals(reviewsAbout.items);
+    let reviewsAbout: ReviewRecord[] = [];
+    try {
+      const result = await pbList<ReviewRecord>("reviews", {
+        perPage: 30,
+        sort: "-created_at",
+        filter: `reviewee_username='${u}'`,
+        expand: "reviewer_id,reviewee_id,deal_id",
+        revalidateSeconds: 60
+      });
+      reviewsAbout = await filterToFullyReviewedDeals(result.items);
+    } catch (err) {
+      console.error(`Failed to fetch reviews for username ${h}:`, err);
+    }
+    const visibleReviewsAbout = reviewsAbout;
 
     return (
       <>
@@ -253,24 +271,37 @@ export default async function UserPage(props: { params: Promise<{ handle: string
     redirect(`/user/${encodeURIComponent(String(member.telegram_id))}`);
   }
 
-  const [reputation, reviewsAbout, reviewsByMember] = await Promise.all([
-    getReputation(member.id),
-    pbList<ReviewRecord>("reviews", {
-      perPage: 30,
-      sort: "-created_at",
-      filter: `reviewee_id='${escapePbString(member.id)}'`,
-      expand: "reviewer_id,reviewee_id,deal_id",
-      revalidateSeconds: 60
-    }),
-    pbList<ReviewRecord>("reviews", {
-      perPage: 200,
-      sort: "-created_at",
-      filter: `reviewer_id='${escapePbString(member.id)}' || reviewee_id='${escapePbString(member.id)}'`,
-      expand: "reviewer_id,reviewee_id",
-      revalidateSeconds: 60
-    })
-  ]);
-  const visibleReviewsAbout = await filterToFullyReviewedDeals(reviewsAbout.items);
+  let reputation: ReputationRecord | null = null;
+  let reviewsAbout: ReviewRecord[] = [];
+  let reviewsByMember: ReviewRecord[] = [];
+  let visibleReviewsAbout: ReviewRecord[] = [];
+  
+  try {
+    const [rep, reviews, byMember] = await Promise.all([
+      getReputation(member.id),
+      pbList<ReviewRecord>("reviews", {
+        perPage: 30,
+        sort: "-created_at",
+        filter: `reviewee_id='${escapePbString(member.id)}'`,
+        expand: "reviewer_id,reviewee_id,deal_id",
+        revalidateSeconds: 60
+      }),
+      pbList<ReviewRecord>("reviews", {
+        perPage: 200,
+        sort: "-created_at",
+        filter: `reviewer_id='${escapePbString(member.id)}' || reviewee_id='${escapePbString(member.id)}'`,
+        expand: "reviewer_id,reviewee_id",
+        revalidateSeconds: 60
+      })
+    ]);
+    reputation = rep;
+    reviewsAbout = reviews.items;
+    reviewsByMember = byMember.items;
+    visibleReviewsAbout = await filterToFullyReviewedDeals(reviewsAbout);
+  } catch (err) {
+    console.error(`Failed to fetch member data for ${member.id}:`, err);
+    // Continue with empty data - show basic member info without reviews
+  }
   const computedAvgRating = avgRatingFromReviews(visibleReviewsAbout);
   const avgToShow = computedAvgRating ?? reputation?.avg_rating ?? null;
 
@@ -283,7 +314,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
   const usernameHistory = new Set<string>();
 
   if (member.username) usernameHistory.add(member.username.toLowerCase());
-  for (const review of reviewsByMember.items) {
+  for (const review of reviewsByMember) {
     if (review.reviewer_id === member.id && review.reviewer_username) {
       usernameHistory.add(review.reviewer_username.toLowerCase());
     }
