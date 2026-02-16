@@ -10,7 +10,11 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import complete_kb, review_kb
-from commontrust_bot.review_notify import maybe_dm_reviewee_with_respond_link, get_review_id_from_reply
+from commontrust_bot.review_notify import (
+    maybe_dm_reviewee_with_respond_link,
+    get_pending_review_response,
+    clear_pending_review_response,
+)
 from commontrust_bot.pocketbase_client import pb_client
 
 router = Router()
@@ -234,37 +238,47 @@ async def cb_deal_complete(query: CallbackQuery) -> None:
 
 @router.message(
     F.chat.type == "private",
-    lambda m: bool(getattr(m, "from_user", None))
-    and bool(getattr(m, "reply_to_message", None))
-    and bool(getattr(m.reply_to_message, "message_id", None)),  # type: ignore[attr-defined]
+    lambda m: bool(getattr(m, "from_user", None)) and get_pending_review_response(getattr(m.from_user, "id", 0)) is not None,  # type: ignore[attr-defined]
 )
 async def maybe_capture_review_response(message: Message) -> None:
     """
-    Handle replies to review notification messages.
-    If a user replies to their review notification, submit it as their public response.
+    Capture the next message a user sends after receiving a review notification.
+    This allows users to simply type their response without using Telegram's reply feature.
     """
-    if not message.from_user or not message.reply_to_message:
+    if not message.from_user:
         raise SkipHandler
 
-    review_id = get_review_id_from_reply(message.from_user.id, message.reply_to_message.message_id)
+    review_id = get_pending_review_response(message.from_user.id)
     if not review_id:
-        # Not a reply to a review notification, let other handlers process it.
+        # No pending review response for this user
         raise SkipHandler
 
     response_text = (message.text or "").strip()
+
+    # Allow /skip to cancel
+    if response_text.startswith("/skip"):
+        clear_pending_review_response(message.from_user.id)
+        await message.answer("Response cancelled. You can respond later from the review page.")
+        return
+
+    # Ignore other commands
+    if response_text.startswith("/"):
+        raise SkipHandler
+
     if not response_text:
-        await message.answer("Your response cannot be empty. Please reply with your public response.")
+        await message.answer("Your response cannot be empty. Send your response text, or /skip to cancel.")
         return
 
     if len(response_text) > 4000:
         await message.answer("Your response is too long. Please keep it under 4000 characters.")
         return
 
-    # Verify this is the reviewee and they haven't already responded.
+    # Submit the response
     try:
         review = await pb_client.get_record("reviews", review_id)
         reviewee_id = review.get("reviewee_id")
         if not reviewee_id:
+            clear_pending_review_response(message.from_user.id)
             await message.answer("Error: Could not find review.")
             return
 
@@ -272,12 +286,14 @@ async def maybe_capture_review_response(message: Message) -> None:
         reviewee_member = await pb_client.get_record("members", reviewee_id)
         reviewee_telegram_id = reviewee_member.get("telegram_id")
         if reviewee_telegram_id != message.from_user.id:
+            clear_pending_review_response(message.from_user.id)
             await message.answer("Error: You are not the reviewee for this review.")
             return
 
         # Check if they already responded.
         existing_response = (review.get("response") or "").strip()
         if existing_response or review.get("response_at"):
+            clear_pending_review_response(message.from_user.id)
             await message.answer("You have already submitted a response to this review.")
             return
 
@@ -286,11 +302,13 @@ async def maybe_capture_review_response(message: Message) -> None:
             "reviews", review_id, {"response": response_text, "response_at": datetime.now().isoformat()}
         )
 
+        clear_pending_review_response(message.from_user.id)
         await message.answer(
-            "Your response has been published on the ledger. "
+            "✅ Your response has been published on the ledger. "
             "It will appear next to the review for everyone to see."
         )
     except Exception as e:
+        clear_pending_review_response(message.from_user.id)
         await message.answer(f"Failed to submit response: {e}")
 
 

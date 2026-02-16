@@ -6,9 +6,9 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from commontrust_bot.review_response_token import make_review_response_token
 from commontrust_bot.web_links import review_respond_url, review_url, user_reviews_url, user_reviews_url_by_telegram_id
 
-# In-memory cache: (telegram_user_id, message_id) -> review_id
-# This allows us to detect when users reply to their review notification.
-_REVIEW_NOTIFICATION_MESSAGES: dict[tuple[int, int], str] = {}
+# In-memory state: telegram_user_id -> review_id
+# When a user receives a review notification, we store their pending response state.
+_PENDING_REVIEW_RESPONSE: dict[int, str] = {}
 
 
 async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> None:
@@ -70,8 +70,8 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
             lines.extend([
                 "",
                 "💬 <b>To post a public response:</b>",
-                "Simply reply to this message with your response text.",
-                "It will be published on the ledger for everyone to see.",
+                "Send me a message with your response text.",
+                "Your next message will be published on the ledger.",
             ])
         if view:
             lines.append(f"<b>View filing:</b> {html.quote(view)}")
@@ -92,18 +92,25 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
         kwargs = {"parse_mode": "HTML"}
         if keyboard is not None:
             kwargs["reply_markup"] = keyboard
-        sent_message = await send_message(reviewee_tid, "\n".join(lines), **kwargs)
+        await send_message(reviewee_tid, "\n".join(lines), **kwargs)
 
-        # Store the message ID so we can detect replies to it.
-        if sent_message and hasattr(sent_message, "message_id"):
-            _REVIEW_NOTIFICATION_MESSAGES[(reviewee_tid, sent_message.message_id)] = review_id
+        # Mark the user as pending a review response.
+        # The next message they send will be captured as their response.
+        _PENDING_REVIEW_RESPONSE[reviewee_tid] = review_id
     except Exception:
         return
 
 
-def get_review_id_from_reply(user_id: int, reply_to_message_id: int) -> str | None:
+def get_pending_review_response(user_id: int) -> str | None:
     """
-    Check if a message is a reply to a review notification.
-    Returns the review_id if it is, None otherwise.
+    Check if a user has a pending review response.
+    Returns the review_id if they do, None otherwise.
     """
-    return _REVIEW_NOTIFICATION_MESSAGES.get((user_id, reply_to_message_id))
+    return _PENDING_REVIEW_RESPONSE.get(user_id)
+
+
+def clear_pending_review_response(user_id: int) -> None:
+    """
+    Clear a user's pending review response state.
+    """
+    _PENDING_REVIEW_RESPONSE.pop(user_id, None)

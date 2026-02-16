@@ -80,8 +80,8 @@ async def test_start_without_payload_skips(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_reply_to_review_notification_submits_response(monkeypatch) -> None:
-    """Test that replying to a review notification message submits a public response."""
+async def test_next_message_after_review_notification_submits_response(monkeypatch) -> None:
+    """Test that the next message a user sends after receiving a review notification becomes their public response."""
     from commontrust_bot import review_notify
 
     pb = FakePocketBase()
@@ -111,25 +111,24 @@ async def test_reply_to_review_notification_submits_response(monkeypatch) -> Non
         reviewee_username="reviewee",
     )
 
-    # Simulate the notification message being sent
-    review_notify._REVIEW_NOTIFICATION_MESSAGES[(2, 999)] = review["id"]
+    # Simulate the user receiving a review notification (sets pending state)
+    review_notify._PENDING_REVIEW_RESPONSE[2] = review["id"]
 
-    # Create a reply to the notification message
-    notification_msg = FakeMessage(text="", from_user=FakeUser(2), chat=FakeChat(2, "private"))
-    notification_msg.message_id = 999  # type: ignore[attr-defined]
-
-    reply_msg = FakeMessage(
+    # User sends a message (any message in the chat)
+    response_msg = FakeMessage(
         text="Thank you for the feedback!",
         from_user=FakeUser(2, "reviewee", "Reviewee"),
         chat=FakeChat(2, "private"),
-        reply_to_message=notification_msg,
     )
 
     # Submit the response
-    await dm_handlers.maybe_capture_review_response(reply_msg)  # type: ignore[arg-type]
+    await dm_handlers.maybe_capture_review_response(response_msg)  # type: ignore[arg-type]
 
     # Verify the response was saved
     updated_review = await pb.get_record("reviews", review["id"])
     assert updated_review["response"] == "Thank you for the feedback!"
     assert updated_review["response_at"] is not None
-    assert "published on the ledger" in reply_msg.answers[-1]["text"]
+    assert "published on the ledger" in response_msg.answers[-1]["text"]
+
+    # Verify pending state was cleared
+    assert 2 not in review_notify._PENDING_REVIEW_RESPONSE
