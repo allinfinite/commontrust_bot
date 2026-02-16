@@ -24,10 +24,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Respect X-Forwarded-* from reverse proxy so we don't redirect to localhost.
-  const proto = req.headers.get("x-forwarded-proto") || "https";
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || req.nextUrl.host;
-  const url = new URL(`/admin/login`, `${proto}://${host}`);
+  const url = req.nextUrl.clone();
+  url.pathname = "/admin/login";
   url.searchParams.set("next", pathname);
   return NextResponse.redirect(url);
 }
