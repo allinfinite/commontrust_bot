@@ -43,6 +43,20 @@ services:
         condition: service_started
     command: ["python", "-m", "commontrust_credit_bot.main"]
 
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - POCKETBASE_URL=${POCKETBASE_URL}
+      - POCKETBASE_API_TOKEN=${POCKETBASE_API_TOKEN:-${POCKETBASE_ADMIN_TOKEN}}
+      - POCKETBASE_ADMIN_TOKEN=${POCKETBASE_ADMIN_TOKEN}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_COOKIE_SECRET=${ADMIN_COOKIE_SECRET}
+    ports:
+      - "3000:3000"
+
 volumes:
   pocketbase-data:
     driver: local
