@@ -259,7 +259,7 @@ async def maybe_capture_review_comment(message: Message) -> None:
         _PENDING_REVIEW_COMMENT.pop(message.from_user.id, None)
         review = result.get("review") if isinstance(result, dict) else None
         review_id = (review or {}).get("id") if isinstance(review, dict) else None
-        url = review_url(review_id) if isinstance(review_id, str) else deal_reviews_url(deal_id)
+        filing_url = review_url(review_id) if isinstance(review_id, str) else deal_reviews_url(deal_id)
         reviewee = result.get("reviewee") if isinstance(result, dict) else None
         username = (reviewee or {}).get("username") if isinstance(reviewee, dict) else None
         telegram_id = (reviewee or {}).get("telegram_id") if isinstance(reviewee, dict) else None
@@ -267,11 +267,18 @@ async def maybe_capture_review_comment(message: Message) -> None:
             user_reviews_url_by_telegram_id(telegram_id if isinstance(telegram_id, int) else None)
             or (user_reviews_url(username) if isinstance(username, str) else None)
         )
-        if url:
+        primary_url = profile_url or filing_url
+        if primary_url:
             profile_block = f"\n\nReviewed user:\n{html.quote(profile_url)}" if profile_url else ""
+            filing_block = (
+                f"\n\nFiling URL (public after both reviews):\n{html.quote(filing_url)}"
+                if filing_url and filing_url != primary_url
+                else ""
+            )
             await message.answer(
                 "Review submitted. Thanks!\n\n"
-                f"View on web:\n{html.quote(url)}"
+                f"View on web:\n{html.quote(primary_url)}"
+                f"{filing_block}"
                 f"{profile_block}",
                 parse_mode="HTML",
             )

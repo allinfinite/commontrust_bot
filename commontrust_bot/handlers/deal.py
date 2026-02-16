@@ -201,14 +201,20 @@ async def cmd_review(message: Message) -> None:
         )
         review = result.get("review") if isinstance(result, dict) else None
         review_id = (review or {}).get("id") if isinstance(review, dict) else None
-        url = review_url(review_id) if isinstance(review_id, str) else deal_reviews_url(deal_id)
-        view_line = f"\n\n<b>View on web:</b> {html.quote(url)}" if url else ""
+        filing_url = review_url(review_id) if isinstance(review_id, str) else deal_reviews_url(deal_id)
         reviewee = result.get("reviewee") if isinstance(result, dict) else None
         username = (reviewee or {}).get("username") if isinstance(reviewee, dict) else None
         telegram_id = (reviewee or {}).get("telegram_id") if isinstance(reviewee, dict) else None
         profile_url = (
             user_reviews_url_by_telegram_id(telegram_id if isinstance(telegram_id, int) else None)
             or (user_reviews_url(username) if isinstance(username, str) else None)
+        )
+        primary_url = profile_url or filing_url
+        view_line = f"\n\n<b>View on web:</b> {html.quote(primary_url)}" if primary_url else ""
+        filing_line = (
+            f"\n\n<b>Filing URL (public after both reviews):</b> {html.quote(filing_url)}"
+            if filing_url and filing_url != primary_url
+            else ""
         )
         profile_line = f"\n\n<b>Reviewed user:</b> {html.quote(profile_url)}" if profile_url else ""
         await message.answer(
@@ -217,6 +223,7 @@ async def cmd_review(message: Message) -> None:
             f"<b>Rating:</b> {'⭐' * rating}\n"
             f"{f'<b>Comment:</b> {comment}' if comment else ''}"
             f"{view_line}"
+            f"{filing_line}"
             f"{profile_line}",
             parse_mode="HTML",
         )
