@@ -5,7 +5,6 @@ from aiogram.types import Message
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.review_notify import maybe_dm_reviewee_with_respond_link
 from commontrust_bot.ui import review_kb
-from commontrust_bot.web_links import deal_reviews_url, review_url, user_reviews_url, user_reviews_url_by_telegram_id
 
 router = Router()
 
@@ -214,32 +213,6 @@ async def cmd_review(message: Message) -> None:
             return
         review = result.get("review") if isinstance(result, dict) else None
         review_id = (review or {}).get("id") if isinstance(review, dict) else None
-        filing_url = review_url(review_id) if isinstance(review_id, str) else deal_reviews_url(deal_id)
-        reviewee = result.get("reviewee") if isinstance(result, dict) else None
-        username = (reviewee or {}).get("username") if isinstance(reviewee, dict) else None
-        telegram_id = (reviewee or {}).get("telegram_id") if isinstance(reviewee, dict) else None
-        profile_url = (
-            user_reviews_url_by_telegram_id(telegram_id if isinstance(telegram_id, int) else None)
-            or (user_reviews_url(username) if isinstance(username, str) else None)
-        )
-        primary_url = profile_url or filing_url
-        view_line = f"\n\n<b>View on web:</b> {html.quote(primary_url)}" if primary_url else ""
-        filing_line = (
-            f"\n\n<b>Filing URL (public after both reviews):</b> {html.quote(filing_url)}"
-            if filing_url and filing_url != primary_url
-            else ""
-        )
-        profile_line = f"\n\n<b>Reviewed user:</b> {html.quote(profile_url)}" if profile_url else ""
-        await message.answer(
-            f"Review submitted!\n\n"
-            f"<b>Deal ID:</b> {deal_id}\n"
-            f"<b>Rating:</b> {'⭐' * rating}\n"
-            f"{f'<b>Comment:</b> {comment}' if comment else ''}"
-            f"{view_line}"
-            f"{filing_line}"
-            f"{profile_line}",
-            parse_mode="HTML",
-        )
         # Best-effort DM to reviewee with a website response link.
         bot = getattr(message, "bot", None)
         if bot is not None:
