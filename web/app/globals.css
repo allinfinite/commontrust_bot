@@ -73,12 +73,23 @@ main {
   flex-direction: column;
 }
 
-/* Legacy brand styles (pre-banner). Kept to avoid churn, but unused in the header now. */
+/* Brand styles (some legacy items kept because other pages may still use them). */
 .brandLink { display: flex; align-items: center; gap: 10px; }
 .brandText { display: flex; flex-direction: column; gap: 2px; }
-.brandKicker { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
-.brandKickerLink { text-decoration: underline; text-underline-offset: 3px; }
 .brandLogo { width: 44px; height: 44px; object-fit: contain; border-radius: 10px; background: rgba(255, 255, 255, 0.55); border: 1px solid var(--hairline); }
+
+.brandKicker {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.brandKicker a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 .brandBannerLink {
   display: block;
@@ -86,12 +97,12 @@ main {
 
 .brandBanner {
   display: block;
-  width: min(560px, 100%);
-  height: auto;
-  border-radius: 16px;
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 10px 24px rgba(16, 17, 20, 0.10);
+  height: 48px;
+  width: auto;
+  max-width: min(560px, 100%);
+  object-fit: contain;
+  border-radius: 14px;
+  filter: drop-shadow(0 10px 18px rgba(16, 17, 20, 0.10));
 }
 
 .brandTitle {
