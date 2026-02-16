@@ -10,6 +10,16 @@ from commontrust_bot.web_links import deal_reviews_url, review_url, user_reviews
 router = Router()
 
 
+def _relation_id(value: object) -> str | None:
+    if isinstance(value, str) and value:
+        return value
+    if isinstance(value, list) and value:
+        first = value[0]
+        if isinstance(first, str) and first:
+            return first
+    return None
+
+
 def parse_mention(text: str) -> int | None:
     if text.startswith("@"):
         return text[1:]
@@ -234,6 +244,29 @@ async def cmd_review(message: Message) -> None:
         bot = getattr(message, "bot", None)
         if bot is not None:
             await maybe_dm_reviewee_with_respond_link(bot, result=result)
+            # Also notify the final reviewer with the review they just received.
+            try:
+                reviewer = result.get("reviewer") if isinstance(result, dict) else None
+                reviewee = result.get("reviewee") if isinstance(result, dict) else None
+                reviewer_id = _relation_id((reviewer or {}).get("id") if isinstance(reviewer, dict) else None)
+                current_review = result.get("review") if isinstance(result, dict) else None
+                current_review_id = (current_review or {}).get("id") if isinstance(current_review, dict) else None
+                if reviewer_id:
+                    all_reviews = await deal_service.get_deal_reviews(deal_id)
+                    incoming = next(
+                        (
+                            r
+                            for r in all_reviews
+                            if _relation_id(r.get("reviewee_id")) == reviewer_id
+                            and (not current_review_id or r.get("id") != current_review_id)
+                        ),
+                        None,
+                    )
+                    if isinstance(incoming, dict):
+                        incoming_result = {"review": incoming, "reviewer": reviewee, "reviewee": reviewer}
+                        await maybe_dm_reviewee_with_respond_link(bot, result=incoming_result)
+            except Exception:
+                pass
     except ValueError as e:
         await message.answer(f"Failed to submit review: {e}")
     except Exception as e:
