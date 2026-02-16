@@ -11,6 +11,7 @@ from tests.fake_telegram import FakeChat, FakeMessage, FakeUser
 class _FakeBot:
     def __init__(self) -> None:
         self.sent: list[tuple[int, str]] = []
+        self._message_id_counter = 1000
 
     async def get_me(self):
         class _Me:
@@ -20,6 +21,11 @@ class _FakeBot:
 
     async def send_message(self, chat_id: int, text: str, **kwargs):
         self.sent.append((chat_id, text))
+        # Return a fake message object with message_id
+        msg = FakeMessage(text=text, from_user=FakeUser(0), chat=FakeChat(chat_id, "private"))
+        msg.message_id = self._message_id_counter
+        self._message_id_counter += 1
+        return msg
 
 
 @pytest.mark.asyncio
@@ -71,3 +77,59 @@ async def test_start_without_payload_skips(monkeypatch) -> None:
     msg.bot = _FakeBot()  # type: ignore[attr-defined]
     with pytest.raises(SkipHandler):
         await dm_handlers.cmd_start_deeplink(msg)  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_reply_to_review_notification_submits_response(monkeypatch) -> None:
+    """Test that replying to a review notification message submits a public response."""
+    from commontrust_bot import review_notify
+
+    pb = FakePocketBase()
+    rep = ReputationService(pb=pb)
+    deals = DealService(pb=pb, reputation=rep)
+    monkeypatch.setattr(dm_handlers, "deal_service", deals)
+    monkeypatch.setattr(dm_handlers, "pb_client", pb)
+
+    # Create members and a deal
+    reviewer = await pb.member_get_or_create(1, "reviewer", "Reviewer")
+    reviewee = await pb.member_get_or_create(2, "reviewee", "Reviewee")
+    deal = await pb.deal_create(
+        initiator_id=reviewer["id"],
+        counterparty_id=reviewee["id"],
+        group_id="test_group",
+        description="Test deal",
+    )
+
+    # Create a review
+    review = await pb.review_create(
+        deal_id=deal["id"],
+        reviewer_id=reviewer["id"],
+        reviewee_id=reviewee["id"],
+        rating=5,
+        comment="Great work!",
+        reviewer_username="reviewer",
+        reviewee_username="reviewee",
+    )
+
+    # Simulate the notification message being sent
+    review_notify._REVIEW_NOTIFICATION_MESSAGES[(2, 999)] = review["id"]
+
+    # Create a reply to the notification message
+    notification_msg = FakeMessage(text="", from_user=FakeUser(2), chat=FakeChat(2, "private"))
+    notification_msg.message_id = 999  # type: ignore[attr-defined]
+
+    reply_msg = FakeMessage(
+        text="Thank you for the feedback!",
+        from_user=FakeUser(2, "reviewee", "Reviewee"),
+        chat=FakeChat(2, "private"),
+        reply_to_message=notification_msg,
+    )
+
+    # Submit the response
+    await dm_handlers.maybe_capture_review_response(reply_msg)  # type: ignore[arg-type]
+
+    # Verify the response was saved
+    updated_review = await pb.get_record("reviews", review["id"])
+    assert updated_review["response"] == "Thank you for the feedback!"
+    assert updated_review["response_at"] is not None
+    assert "published on the ledger" in reply_msg.answers[-1]["text"]

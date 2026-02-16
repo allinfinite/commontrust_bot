@@ -6,6 +6,10 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from commontrust_bot.review_response_token import make_review_response_token
 from commontrust_bot.web_links import review_respond_url, review_url, user_reviews_url, user_reviews_url_by_telegram_id
 
+# In-memory cache: (telegram_user_id, message_id) -> review_id
+# This allows us to detect when users reply to their review notification.
+_REVIEW_NOTIFICATION_MESSAGES: dict[tuple[int, int], str] = {}
+
 
 async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> None:
     """
@@ -63,7 +67,7 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
             f"<b>Deal ID:</b> <code>{html.quote(str(deal_id))}</code>" if deal_id else "",
         ]
         if respond:
-            lines.extend(["", f"<b>Respond on the ledger:</b> {html.quote(respond)}"])
+            lines.extend(["", "<b>To respond:</b> Reply to this message or click the button below."])
         if view:
             lines.append(f"<b>View filing:</b> {html.quote(view)}")
         if profile:
@@ -84,6 +88,18 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
         kwargs = {"parse_mode": "HTML"}
         if keyboard is not None:
             kwargs["reply_markup"] = keyboard
-        await send_message(reviewee_tid, "\n".join(lines), **kwargs)
+        sent_message = await send_message(reviewee_tid, "\n".join(lines), **kwargs)
+
+        # Store the message ID so we can detect replies to it.
+        if sent_message and hasattr(sent_message, "message_id"):
+            _REVIEW_NOTIFICATION_MESSAGES[(reviewee_tid, sent_message.message_id)] = review_id
     except Exception:
         return
+
+
+def get_review_id_from_reply(user_id: int, reply_to_message_id: int) -> str | None:
+    """
+    Check if a message is a reply to a review notification.
+    Returns the review_id if it is, None otherwise.
+    """
+    return _REVIEW_NOTIFICATION_MESSAGES.get((user_id, reply_to_message_id))

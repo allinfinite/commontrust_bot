@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from aiogram import F, Router, html
@@ -9,7 +10,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import complete_kb, review_kb
-from commontrust_bot.review_notify import maybe_dm_reviewee_with_respond_link
+from commontrust_bot.review_notify import maybe_dm_reviewee_with_respond_link, get_review_id_from_reply
+from commontrust_bot.pocketbase_client import pb_client
 
 router = Router()
 
@@ -228,6 +230,68 @@ async def cb_deal_complete(query: CallbackQuery) -> None:
     except Exception as e:
         await query.answer("Failed.", show_alert=False)
         await query.message.answer(f"Failed to complete deal: {e}")
+
+
+@router.message(
+    F.chat.type == "private",
+    lambda m: bool(getattr(m, "from_user", None))
+    and bool(getattr(m, "reply_to_message", None))
+    and bool(getattr(m.reply_to_message, "message_id", None)),  # type: ignore[attr-defined]
+)
+async def maybe_capture_review_response(message: Message) -> None:
+    """
+    Handle replies to review notification messages.
+    If a user replies to their review notification, submit it as their public response.
+    """
+    if not message.from_user or not message.reply_to_message:
+        raise SkipHandler
+
+    review_id = get_review_id_from_reply(message.from_user.id, message.reply_to_message.message_id)
+    if not review_id:
+        # Not a reply to a review notification, let other handlers process it.
+        raise SkipHandler
+
+    response_text = (message.text or "").strip()
+    if not response_text:
+        await message.answer("Your response cannot be empty. Please reply with your public response.")
+        return
+
+    if len(response_text) > 4000:
+        await message.answer("Your response is too long. Please keep it under 4000 characters.")
+        return
+
+    # Verify this is the reviewee and they haven't already responded.
+    try:
+        review = await pb_client.get_record("reviews", review_id)
+        reviewee_id = review.get("reviewee_id")
+        if not reviewee_id:
+            await message.answer("Error: Could not find review.")
+            return
+
+        # Get the reviewee's telegram_id to verify it matches the current user.
+        reviewee_member = await pb_client.get_record("members", reviewee_id)
+        reviewee_telegram_id = reviewee_member.get("telegram_id")
+        if reviewee_telegram_id != message.from_user.id:
+            await message.answer("Error: You are not the reviewee for this review.")
+            return
+
+        # Check if they already responded.
+        existing_response = (review.get("response") or "").strip()
+        if existing_response or review.get("response_at"):
+            await message.answer("You have already submitted a response to this review.")
+            return
+
+        # Submit the response.
+        await pb_client.update_record(
+            "reviews", review_id, {"response": response_text, "response_at": datetime.now().isoformat()}
+        )
+
+        await message.answer(
+            "Your response has been published on the ledger. "
+            "It will appear next to the review for everyone to see."
+        )
+    except Exception as e:
+        await message.answer(f"Failed to submit response: {e}")
 
 
 @router.message(

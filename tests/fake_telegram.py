@@ -25,6 +25,7 @@ class FakeMessage:
     chat: FakeChat
     reply_to_message: FakeMessage | None = None
     answers: list[dict[str, Any]] = field(default_factory=list)
+    message_id: int = 0
 
     async def answer(self, text: str, **kwargs: Any) -> None:
         self.answers.append({"text": text, **kwargs})
