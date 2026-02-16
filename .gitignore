@@ -53,6 +53,11 @@ htmlcov/
 # Local reports/artifacts
 reports/
 
+# Local runtime data (e.g. Telethon sessions)
+.data/
+*.session
+*.session-journal
+
 # PocketBase data
 pb_data/
 

@@ -10,7 +10,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import complete_kb, review_kb
 from commontrust_bot.review_notify import maybe_dm_reviewee_with_respond_link
-from commontrust_bot.web_links import deal_reviews_url, user_reviews_url, user_reviews_url_by_telegram_id
+from commontrust_bot.web_links import deal_reviews_url, review_url, user_reviews_url, user_reviews_url_by_telegram_id
 
 router = Router()
 
@@ -257,7 +257,9 @@ async def maybe_capture_review_comment(message: Message) -> None:
             comment=comment,
         )
         _PENDING_REVIEW_COMMENT.pop(message.from_user.id, None)
-        url = deal_reviews_url(deal_id)
+        review = result.get("review") if isinstance(result, dict) else None
+        review_id = (review or {}).get("id") if isinstance(review, dict) else None
+        url = review_url(review_id) if isinstance(review_id, str) else deal_reviews_url(deal_id)
         reviewee = result.get("reviewee") if isinstance(result, dict) else None
         username = (reviewee or {}).get("username") if isinstance(reviewee, dict) else None
         telegram_id = (reviewee or {}).get("telegram_id") if isinstance(reviewee, dict) else None
