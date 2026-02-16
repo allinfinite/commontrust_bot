@@ -271,9 +271,12 @@ class DealService:
         if not reviewer:
             raise ValueError("Reviewer not found")
 
-        reviewer_id = reviewer.get("id")
-        initiator_id = deal.get("initiator_id")
-        counterparty_id = deal.get("counterparty_id")
+        reviewer_id = self._relation_id(reviewer.get("id"))
+        initiator_id = self._relation_id(deal.get("initiator_id"))
+        counterparty_id = self._relation_id(deal.get("counterparty_id"))
+
+        if not reviewer_id or not initiator_id or not counterparty_id:
+            raise ValueError("Deal participants missing")
 
         if reviewer_id not in [initiator_id, counterparty_id]:
             raise ValueError("Only deal participants can review")
@@ -283,6 +286,7 @@ class DealService:
         # Relation filter behavior can vary by backend shape (string vs 1-item list),
         # so do a robust duplicate check across all reviews for the deal.
         existing_reviews = await self.pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
+        existing_reviewer_ids = {self._relation_id(r.get("reviewer_id")) for r in existing_reviews.get("items", [])}
         for r in existing_reviews.get("items", []):
             if self._relation_id(r.get("reviewer_id")) == reviewer_id:
                 raise ValueError("You have already reviewed this deal")
@@ -312,6 +316,12 @@ class DealService:
             "reviewer": reviewer,
             "reviewee": reviewee,
             "deal": deal,
+            # Determined from pre-insert state + current reviewer, so it's not affected by
+            # eventual consistency/stale GETs right after POST.
+            "deal_fully_reviewed": (
+                (initiator_id in (existing_reviewer_ids | {reviewer_id}))
+                and (counterparty_id in (existing_reviewer_ids | {reviewer_id}))
+            ),
         }
 
     async def get_deal_reviews(self, deal_id: str) -> list[dict]:

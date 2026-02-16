@@ -199,8 +199,7 @@ async def cmd_review(message: Message) -> None:
             rating=rating,
             comment=comment,
         )
-        visible_reviews = await deal_service.get_deal_reviews(deal_id)
-        if len(visible_reviews) < 2:
+        if not bool(result.get("deal_fully_reviewed")):
             await message.answer("waiting on their review")
             return
         review = result.get("review") if isinstance(result, dict) else None

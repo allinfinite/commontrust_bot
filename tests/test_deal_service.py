@@ -57,6 +57,7 @@ async def test_review_updates_reputation_and_blocks_duplicates(fake_pb) -> None:
     # First review should be "invisible" until the other party also reviews.
     review_result = await deals.create_review(deal_id, reviewer_telegram_id=1, rating=5, comment="great")
     assert review_result["review"]["rating"] == 5
+    assert review_result["deal_fully_reviewed"] is False
 
     counterparty = await rep.get_member(telegram_id=2)
     assert counterparty is not None
@@ -64,7 +65,8 @@ async def test_review_updates_reputation_and_blocks_duplicates(fake_pb) -> None:
     assert stats_after_one == {"verified_deals": 0, "avg_rating": 0.0, "total_reviews": 0}
 
     # The second party reviews; now both reviews become visible and count.
-    await deals.create_review(deal_id, reviewer_telegram_id=2, rating=4)
+    second = await deals.create_review(deal_id, reviewer_telegram_id=2, rating=4)
+    assert second["deal_fully_reviewed"] is True
 
     stats_after_two = await rep.get_reputation(counterparty["id"])
     assert stats_after_two["verified_deals"] == 1

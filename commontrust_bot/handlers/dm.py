@@ -257,8 +257,7 @@ async def maybe_capture_review_comment(message: Message) -> None:
             comment=comment,
         )
         _PENDING_REVIEW_COMMENT.pop(message.from_user.id, None)
-        visible_reviews = await deal_service.get_deal_reviews(deal_id)
-        if len(visible_reviews) < 2:
+        if not bool(result.get("deal_fully_reviewed")):
             await message.answer("waiting on their review")
             return
         review = result.get("review") if isinstance(result, dict) else None
