@@ -195,8 +195,9 @@ async def cb_review_rating(query: CallbackQuery) -> None:
     )
 
     await query.answer("Rating selected.")
+    stars = "⭐" * rating
     await query.message.answer(
-        f"Got it: <b>{rating}</b>.\n\n"
+        f"Got it: <b>{stars}</b>\n\n"
         "Send an optional comment now, or type /skip to submit without a comment.",
         parse_mode="HTML",
     )
