@@ -10,11 +10,12 @@ async function count(collection: string): Promise<number> {
 }
 
 export default async function AdminPage() {
-  const [members, reviews, deals, reputation] = await Promise.all([
+  const [members, reviews, deals, reputation, reports] = await Promise.all([
     count("members"),
     count("reviews"),
     count("deals"),
-    count("reputation")
+    count("reputation"),
+    count("reports")
   ]);
 
   return (
@@ -50,6 +51,10 @@ export default async function AdminPage() {
 
       <div className="kpi">
         <div className="kpiItem">
+          <div className="kpiLabel">Reports</div>
+          <div className="kpiValue">{reports}</div>
+        </div>
+        <div className="kpiItem">
           <div className="kpiLabel">Reputation records</div>
           <div className="kpiValue">{reputation}</div>
         </div>
@@ -78,6 +83,9 @@ export default async function AdminPage() {
           </Link>
           <Link className="pill" href="/admin/reviews">
             Manage reviews
+          </Link>
+          <Link className="pill" href="/admin/reports">
+            Manage reports
           </Link>
         </div>
         <div className="muted" style={{ marginTop: 10 }}>
