@@ -28,6 +28,10 @@ async function submitResponseAction(formData: FormData) {
   const review = await pbAdminGet<ReviewWithExpand>("reviews", p.review_id, "reviewee_id");
   const revieweeTid = review.expand?.reviewee_id?.telegram_id;
   if (!revieweeTid || revieweeTid !== p.reviewee_tid) throw new Error("Token does not match reviewee");
+  const existingResponse = (review.response ?? "").trim();
+  if (existingResponse || review.response_at) {
+    throw new Error("A response has already been submitted for this review");
+  }
 
   await pbAdminPatch("reviews", p.review_id, { response, response_at: new Date().toISOString() });
   redirect(`/reviews/${encodeURIComponent(p.review_id)}`);
@@ -63,6 +67,7 @@ export default async function RespondPage(props: { params: Promise<{ token: stri
     display_name: reviewee?.display_name,
     telegram_id: reviewee?.telegram_id
   };
+  const hasResponse = Boolean((r.response ?? "").trim() || r.response_at);
 
   return (
     <>
@@ -111,32 +116,41 @@ export default async function RespondPage(props: { params: Promise<{ token: stri
 
         <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
           <div style={{ fontWeight: 900 }}>Your response</div>
-          <div className="muted" style={{ marginTop: 6 }}>
-            This will be published under the review.
-          </div>
-
-          <form action={submitResponseAction} style={{ marginTop: 10 }}>
-            <input type="hidden" name="token" value={t} />
-            <textarea
-              className="input"
-              name="response"
-              rows={6}
-              defaultValue={r.response ?? ""}
-              placeholder="Write a public response..."
-              style={{ width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.45, padding: 12 }}
-            />
-            <div className="rowBetween" style={{ marginTop: 10 }}>
-              <button className="btn btnPrimary" type="submit">
-                Publish response
-              </button>
-              <Link className="pill" href={`/reviews/${encodeURIComponent(r.id)}`}>
-                Cancel
-              </Link>
-            </div>
-          </form>
+          {hasResponse ? (
+            <>
+              <div className="muted" style={{ marginTop: 6 }}>
+                A response has already been submitted. Only one response is allowed.
+              </div>
+              <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{r.response}</div>
+            </>
+          ) : (
+            <>
+              <div className="muted" style={{ marginTop: 6 }}>
+                This will be published under the review. You can submit only once.
+              </div>
+              <form action={submitResponseAction} style={{ marginTop: 10 }}>
+                <input type="hidden" name="token" value={t} />
+                <textarea
+                  className="input"
+                  name="response"
+                  rows={6}
+                  defaultValue=""
+                  placeholder="Write a public response..."
+                  style={{ width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.45, padding: 12 }}
+                />
+                <div className="rowBetween" style={{ marginTop: 10 }}>
+                  <button className="btn btnPrimary" type="submit">
+                    Publish response
+                  </button>
+                  <Link className="pill" href={`/reviews/${encodeURIComponent(r.id)}`}>
+                    Cancel
+                  </Link>
+                </div>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </>
   );
 }
-
