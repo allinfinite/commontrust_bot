@@ -113,10 +113,7 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
     badge = <Badge text="Verified" color="#0b7a46" bg="rgba(11,122,70,0.08)" border="rgba(11,122,70,0.3)" />;
   }
 
-  const ratingDisplay = avgRating !== null ? avgRating.toFixed(2) : "—";
-  const starsDisplay = avgRating !== null
-    ? "★".repeat(Math.round(avgRating)) + "☆".repeat(5 - Math.round(avgRating))
-    : "";
+  const ratingDisplay = avgRating !== null ? `${avgRating.toFixed(2)} / 5` : "—";
 
   return new ImageResponse(
     (
@@ -242,18 +239,6 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
               <div style={{ display: "flex", fontSize: 28, fontWeight: 800, color: "#b61b2e" }}>
                 {ratingDisplay}
               </div>
-              {starsDisplay ? (
-                <div
-                  style={{
-                    display: "flex",
-                    fontSize: 22,
-                    letterSpacing: 2,
-                    color: "#b61b2e",
-                  }}
-                >
-                  {starsDisplay}
-                </div>
-              ) : null}
             </div>
 
             <StatBlock label="Verified Deals" value={verifiedDeals != null ? String(verifiedDeals) : "—"} valueColor="rgba(16,17,20,0.85)" />
