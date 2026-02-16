@@ -24,4 +24,4 @@ RUN pip install -e .
 RUN useradd --create-home --shell /bin/bash appuser
 USER appuser
 
-CMD ["python", "-m", "commontrust_api.main"]
+CMD ["python", "-m", "commontrust_bot.main"]
