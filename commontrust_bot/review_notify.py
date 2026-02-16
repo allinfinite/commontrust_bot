@@ -34,11 +34,13 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
         outcome = (review or {}).get("outcome") if isinstance(review, dict) else None
         deal_id = (review or {}).get("deal_id") if isinstance(review, dict) else None
 
-        token = make_review_response_token(review_id, reviewee_tid)
-        respond = review_respond_url(token)
         view = review_url(review_id)
-        if not respond:
-            return
+        respond: str | None = None
+        try:
+            token = make_review_response_token(review_id, reviewee_tid)
+            respond = review_respond_url(token)
+        except Exception:
+            respond = None
 
         username = (reviewee or {}).get("username") if isinstance(reviewee, dict) else None
         profile = user_reviews_url_by_telegram_id(reviewee_tid) or (user_reviews_url(username) if isinstance(username, str) else None)
@@ -59,24 +61,29 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
             comment_line,
             f"<b>Outcome:</b> {html.quote(str(outcome))}" if outcome else "",
             f"<b>Deal ID:</b> <code>{html.quote(str(deal_id))}</code>" if deal_id else "",
-            "",
-            f"<b>Respond on the ledger:</b> {html.quote(respond)}",
         ]
+        if respond:
+            lines.extend(["", f"<b>Respond on the ledger:</b> {html.quote(respond)}"])
         if view:
             lines.append(f"<b>View filing:</b> {html.quote(view)}")
         if profile:
             lines.append(f"<b>Your ledger page:</b> {html.quote(profile)}")
         lines = [line for line in lines if line != ""]
 
-        rows = [[InlineKeyboardButton(text="Public Response", url=respond)]]
+        rows: list[list[InlineKeyboardButton]] = []
+        if respond:
+            rows.append([InlineKeyboardButton(text="Public Response", url=respond)])
         if view:
             rows.append([InlineKeyboardButton(text="Open Review", url=view)])
-        keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
 
         # aiogram bot has send_message; tests may pass fakes that implement it.
         send_message = getattr(bot, "send_message", None)
         if not callable(send_message):
             return
-        await send_message(reviewee_tid, "\n".join(lines), parse_mode="HTML", reply_markup=keyboard)
+        kwargs = {"parse_mode": "HTML"}
+        if keyboard is not None:
+            kwargs["reply_markup"] = keyboard
+        await send_message(reviewee_tid, "\n".join(lines), **kwargs)
     except Exception:
         return

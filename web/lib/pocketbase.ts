@@ -66,6 +66,26 @@ export async function pbList<T>(
   return (await res.json()) as PbListResponse<T>;
 }
 
+export async function pbGet<T>(
+  collection: string,
+  id: string,
+  opts: { expand?: string; fields?: string; revalidateSeconds?: number } = {}
+): Promise<T> {
+  const url = pbUrl(`/api/collections/${collection}/records/${encodeURIComponent(id)}`, {
+    expand: opts.expand,
+    fields: opts.fields
+  });
+  const res = await fetch(url, {
+    headers: { ...getAuthHeaders() },
+    next: { revalidate: opts.revalidateSeconds ?? 60 }
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`PocketBase ${res.status} for ${collection}/${id}: ${body.slice(0, 400)}`);
+  }
+  return (await res.json()) as T;
+}
+
 export function escapePbString(v: string): string {
   // PocketBase filter strings are single-quoted.
   // This is intentionally conservative: escape backslash + single-quote.

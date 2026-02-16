@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { escapePbString, pbList } from "@/lib/pocketbase";
+import { escapePbString, pbGet, pbList } from "@/lib/pocketbase";
 import { pbAdminGet } from "@/lib/pocketbase_admin";
 import type { DealRecord, ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
@@ -23,12 +23,9 @@ export default async function DealPage(props: { params: Promise<{ id: string }> 
 
   let deal: DealRecord | null = null;
   try {
-    const dealRes = await pbList<DealRecord>("deals", {
-      perPage: 1,
-      filter: `id='${escapePbString(dealId)}'`,
+    deal = await pbGet<DealRecord>("deals", dealId, {
       revalidateSeconds: 60
     });
-    deal = dealRes.items[0] ?? null;
   } catch {
     // Fall through to admin-token fallback below.
   }
