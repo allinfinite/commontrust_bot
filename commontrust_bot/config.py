@@ -39,6 +39,12 @@ class Settings(BaseSettings):
         description="HMAC secret for signing review response links (shared with web app)",
     )
 
+    venice_api_key: str = Field(default="", description="Venice.ai API key for report analysis")
+    ai_model: str = Field(
+        default="llama-3.3-70b",
+        description="Venice.ai model for report analysis (e.g. llama-3.3-70b, deepseek-ai-DeepSeek-R1)",
+    )
+
     @property
     def is_configured(self) -> bool:
         has_pb_auth = bool(

@@ -281,7 +281,11 @@ export default async function UserPage(props: { params: Promise<{ handle: string
           <h1 className="pageTitle">{title}</h1>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
             <span className="pill">Profile name: {profileName}</span>
-            {member.verified ? (
+            {member.scammer ? (
+              <span className="pill" style={{ borderColor: "rgba(255,50,50,0.4)", color: "#ff3232", fontWeight: 800 }}>
+                Scammer
+              </span>
+            ) : member.verified ? (
               <span className="pill" style={{ borderColor: "rgba(89,255,168,0.25)", color: "var(--good)" }}>
                 Verified
               </span>
@@ -300,6 +304,26 @@ export default async function UserPage(props: { params: Promise<{ handle: string
           </div>
         </div>
       </div>
+
+      {member.scammer && (
+        <div
+          style={{
+            background: "rgba(255, 50, 50, 0.12)",
+            border: "2px solid rgba(255, 50, 50, 0.35)",
+            borderRadius: 8,
+            padding: "14px 18px",
+            marginTop: 16,
+          }}
+        >
+          <div style={{ fontWeight: 900, fontSize: 18, color: "#ff3232" }}>
+            CONFIRMED SCAMMER
+          </div>
+          <div style={{ marginTop: 6, color: "#ff6666" }}>
+            This user has been confirmed as a scammer and is permanently banned from trading.
+            {member.scammer_at ? ` Flagged on ${formatDate(member.scammer_at)}.` : ""}
+          </div>
+        </div>
+      )}
 
       <div className="kpi">
         <div className="kpiItem">

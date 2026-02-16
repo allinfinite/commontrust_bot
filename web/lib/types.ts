@@ -9,6 +9,8 @@ export type MemberRecord = PbRecordBase & {
   username?: string;
   display_name?: string;
   verified?: boolean;
+  scammer?: boolean;
+  scammer_at?: string;
 };
 
 export type DealRecord = PbRecordBase & {

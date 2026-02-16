@@ -21,6 +21,17 @@ async def cmd_reputation(message: Message) -> None:
             target_user.full_name,
         )
 
+        if member.get("scammer"):
+            scammer_at = member.get("scammer_at", "Unknown")
+            await message.answer(
+                f"<b>⛔ CONFIRMED SCAMMER</b>\n\n"
+                f"<b>User:</b> {html.bold(target_user.full_name)}\n"
+                f"This user has been confirmed as a scammer and is banned from trading.\n"
+                f"<b>Flagged on:</b> {scammer_at}",
+                parse_mode="HTML",
+            )
+            return
+
         stats = await reputation_service.get_member_stats(member.get("id"))
         rep = stats.get("reputation", {})
 

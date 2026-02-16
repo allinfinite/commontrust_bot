@@ -30,6 +30,16 @@
         "required": false
       },
       {
+        "name": "scammer",
+        "type": "bool",
+        "required": false
+      },
+      {
+        "name": "scammer_at",
+        "type": "datetime",
+        "required": false
+      },
+      {
         "name": "created_at",
         "type": "autodate",
         "required": false,
@@ -492,6 +502,123 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX idx_ledger_remotes_chat ON ledger_remotes (telegram_chat_id)"
+    ]
+  },
+  {
+    "name": "reports",
+    "type": "base",
+    "schema": [
+      {
+        "name": "reporter_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "reported_id",
+        "type": "relation",
+        "required": true,
+        "collectionId": "members",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "deal_id",
+        "type": "relation",
+        "required": false,
+        "collectionId": "deals",
+        "cascadeDelete": false,
+        "minSelect": null,
+        "maxSelect": 1
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "evidence_photos",
+        "type": "file",
+        "required": false,
+        "maxSelect": 10,
+        "maxSize": 10485760,
+        "mimeTypes": ["image/jpeg", "image/png", "image/webp"]
+      },
+      {
+        "name": "forwarded_messages",
+        "type": "json",
+        "required": false
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "values": ["pending_ai", "pending_admin", "approved", "dismissed"]
+      },
+      {
+        "name": "ai_severity",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "ai_summary",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "ai_recommendation",
+        "type": "select",
+        "required": false,
+        "values": ["ban", "warn", "dismiss"]
+      },
+      {
+        "name": "ai_reasoning",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "ai_model_used",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "admin_decision",
+        "type": "select",
+        "required": false,
+        "values": ["confirm_scammer", "warn", "dismiss"]
+      },
+      {
+        "name": "admin_id",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "admin_note",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "resolved_at",
+        "type": "datetime",
+        "required": false
+      },
+      {
+        "name": "created_at",
+        "type": "autodate",
+        "required": false,
+        "onCreate": true,
+        "onUpdate": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_reports_reporter ON reports (reporter_id)",
+      "CREATE INDEX idx_reports_reported ON reports (reported_id)",
+      "CREATE INDEX idx_reports_status ON reports (status)",
+      "CREATE INDEX idx_reports_deal ON reports (deal_id)"
     ]
   }
 ]

@@ -33,6 +33,10 @@ async def cmd_help(message: Message) -> None:
 /complete deal_id - Mark a deal as completed
 /review deal_id rating(1-5) [comment] - Review a completed deal
 
+<b>Reports</b>
+/report @username - Report a scammer (evidence collected in DM)
+/report deal_id - Report linked to a specific deal
+
 <b>Reputation</b>
 /reputation - View your reputation stats
 /mydeals - List your deals

@@ -389,6 +389,42 @@ class PocketBaseClient:
     async def sanction_deactivate(self, sanction_id: str) -> dict[str, Any]:
         return await self.update_record("sanctions", sanction_id, {"is_active": False})
 
+    async def create_record_with_files(
+        self,
+        collection: str,
+        data: dict[str, Any],
+        files: list[tuple[str, str, bytes, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Create a record using multipart form (required when uploading file fields).
+
+        *files* is a list of (field_name, filename, content_bytes, mime_type) tuples.
+        """
+        import json as _json
+
+        url = f"{self.base_url}/api/collections/{collection}/records"
+        headers = self._headers()
+        form_data: dict[str, str] = {}
+        for k, v in data.items():
+            if isinstance(v, (dict, list)):
+                form_data[k] = _json.dumps(v)
+            else:
+                form_data[k] = str(v) if not isinstance(v, str) else v
+        upload_files: list[tuple[str, tuple[str, bytes, str]]] = []
+        for field_name, filename, content, mime in (files or []):
+            upload_files.append((field_name, (filename, content, mime)))
+        response = await self.client.post(
+            url, headers=headers, data=form_data, files=upload_files
+        )
+        if response.status_code >= 400:
+            logger.error(f"PocketBase file-upload error: {response.status_code} - {response.text}")
+            raise PocketBaseError(f"Request failed: {response.status_code} - {response.text}")
+        return response.json()
+
+    async def member_set_scammer(self, member_id: str) -> dict[str, Any]:
+        return await self.update_record(
+            "members", member_id, {"scammer": True, "scammer_at": datetime.now().isoformat()}
+        )
+
     # Hub mode: per-chat remote ledger config (stored in PB).
     async def ledger_remote_get(self, telegram_chat_id: int) -> dict[str, Any] | None:
         return await self.get_first("ledger_remotes", f"telegram_chat_id={telegram_chat_id}")

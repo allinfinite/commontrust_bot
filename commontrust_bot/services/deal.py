@@ -46,7 +46,12 @@ class DealService:
     ) -> dict:
         initiator = await self.reputation.get_or_create_member(initiator_telegram_id)
         counterparty = await self.reputation.get_or_create_member(counterparty_telegram_id)
-        
+
+        if initiator.get("scammer"):
+            raise ValueError("Your account has been flagged as a confirmed scammer.")
+        if counterparty.get("scammer"):
+            raise ValueError("Cannot create deals with a confirmed scammer.")
+
         group = await self.pb.group_get_or_create(group_telegram_id, "")
 
         sanction = await self.pb.sanction_get_active(counterparty.get("id"), group.get("id"))
@@ -135,6 +140,14 @@ class DealService:
         accepter_id = accepter.get("id")
         if not isinstance(accepter_id, str):
             raise ValueError("Accepter missing id")
+
+        if accepter.get("scammer"):
+            raise ValueError("Your account has been flagged as a confirmed scammer.")
+
+        # Check initiator too.
+        initiator_record = await self.pb.get_record("members", initiator_id)
+        if initiator_record and initiator_record.get("scammer"):
+            raise ValueError("Cannot accept a deal from a confirmed scammer.")
 
         if accepter_id == initiator_id:
             raise ValueError("You cannot accept your own invite")

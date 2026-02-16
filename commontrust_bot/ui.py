@@ -24,3 +24,31 @@ def review_kb(deal_id: str) -> InlineKeyboardMarkup:
         ]
     )
 
+
+def report_confirm_kb(reporter_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Submit Report", callback_data=f"report_submit:{reporter_id}"),
+                InlineKeyboardButton(text="Cancel", callback_data=f"report_cancel:{reporter_id}"),
+            ]
+        ]
+    )
+
+
+def report_admin_kb(report_id: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Confirm Scammer", callback_data=f"report_action:{report_id}:confirm_scammer"
+                ),
+                InlineKeyboardButton(text="Warn", callback_data=f"report_action:{report_id}:warn"),
+            ],
+            [
+                InlineKeyboardButton(text="Dismiss", callback_data=f"report_action:{report_id}:dismiss"),
+                InlineKeyboardButton(text="View Evidence", callback_data=f"report_evidence:{report_id}"),
+            ],
+        ]
+    )
+
