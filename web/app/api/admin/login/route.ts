@@ -4,21 +4,26 @@ import { adminCookieName, adminMaxAgeSeconds, mintAdminCookieValue } from "@/lib
 
 export const runtime = "nodejs";
 
-function badRedirect(reqUrl: string, nextPath: string, err: string): NextResponse {
-  const url = new URL("/admin/login", reqUrl);
+/** Build an absolute URL respecting X-Forwarded-* headers from a reverse proxy. */
+function publicUrl(path: string, req: Request): URL {
+  const h = new Headers(req.headers);
+  const proto = h.get("x-forwarded-proto") || "https";
+  const host = h.get("x-forwarded-host") || h.get("host") || new URL(req.url).host;
+  return new URL(path, `${proto}://${host}`);
+}
+
+function badRedirect(req: Request, nextPath: string, err: string): NextResponse {
+  const url = publicUrl("/admin/login", req);
   url.searchParams.set("next", nextPath);
   url.searchParams.set("err", err);
   return NextResponse.redirect(url, { status: 303 });
 }
 
 export async function GET(req: Request) {
-  // If someone opens the API route in the browser, send them to the login page.
-  return NextResponse.redirect(new URL("/admin/login", req.url), { status: 303 });
+  return NextResponse.redirect(publicUrl("/admin/login", req), { status: 303 });
 }
 
 export async function POST(req: Request) {
-  // Avoid Request.formData() here: on some Vercel/Next runtimes this can throw and surface as a 500.
-  // The form submits as application/x-www-form-urlencoded, so parse from text.
   const body = await req.text().catch(() => "");
   const params = new URLSearchParams(body);
   const password = String(params.get("password") ?? "");
@@ -28,15 +33,15 @@ export async function POST(req: Request) {
   const expected = process.env.ADMIN_PASSWORD || "";
   const secret = process.env.ADMIN_COOKIE_SECRET || "";
   if (!expected || !secret) {
-    return badRedirect(req.url, nextPath, "Admin auth is not configured on the server.");
+    return badRedirect(req, nextPath, "Admin auth is not configured on the server.");
   }
 
   if (password !== expected) {
-    return badRedirect(req.url, nextPath, "Invalid password.");
+    return badRedirect(req, nextPath, "Invalid password.");
   }
 
   const value = await mintAdminCookieValue(secret);
-  const res = NextResponse.redirect(new URL(nextPath, req.url), { status: 303 });
+  const res = NextResponse.redirect(publicUrl(nextPath, req), { status: 303 });
   res.cookies.set({
     name: adminCookieName(),
     value,
