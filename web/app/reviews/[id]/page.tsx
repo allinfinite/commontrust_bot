@@ -7,15 +7,6 @@ import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
 
-function isFullyReviewed(dealId: string | undefined, reviewsForDeal: Pick<ReviewRecord, "reviewer_id">[]): boolean {
-  if (!dealId) return false;
-  const reviewers = new Set<string>();
-  for (const r of reviewsForDeal) {
-    if (r.reviewer_id) reviewers.add(r.reviewer_id);
-  }
-  return reviewers.size >= 2;
-}
-
 export default async function ReviewPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const reviewId = id.trim();
@@ -31,31 +22,6 @@ export default async function ReviewPage(props: { params: Promise<{ id: string }
   if (!r) notFound();
 
   const dealId = r.deal_id;
-  const dealReviews = await pbList<Pick<ReviewRecord, "reviewer_id">>("reviews", {
-    perPage: 10,
-    filter: `deal_id='${escapePbString(dealId)}'`,
-    fields: "reviewer_id",
-    revalidateSeconds: 60
-  });
-  const visible = isFullyReviewed(dealId, dealReviews.items);
-  if (!visible) {
-    return (
-      <>
-        <div className="row">
-          <h1 className="pageTitle">Filing</h1>
-          <Link className="pill" href="/reviews">
-            Browse all
-          </Link>
-        </div>
-        <div className="card" style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 900 }}>Not public yet</div>
-          <div className="muted" style={{ marginTop: 6 }}>
-            Reviews only appear after both parties have reviewed the deal.
-          </div>
-        </div>
-      </>
-    );
-  }
 
   const reviewer = r.expand?.reviewer_id;
   const reviewee = r.expand?.reviewee_id;
@@ -128,4 +94,3 @@ export default async function ReviewPage(props: { params: Promise<{ id: string }
     </>
   );
 }
-

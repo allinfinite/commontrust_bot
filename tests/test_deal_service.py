@@ -92,3 +92,29 @@ async def test_sanction_blocks_deal_creation(fake_pb) -> None:
 
     with pytest.raises(ValueError, match="active sanction"):
         await deals.create_deal(initiator_telegram_id=1, counterparty_telegram_id=2, group_telegram_id=100, description="x")
+
+
+@pytest.mark.asyncio
+async def test_get_deal_reviews_handles_relation_list_shape(fake_pb) -> None:
+    rep = ReputationService(pb=fake_pb)
+    deals = DealService(pb=fake_pb, reputation=rep)
+
+    created = await deals.create_deal(1, 2, 100, "x")
+    deal_id = created["deal"]["id"]
+    await deals.confirm_deal(deal_id, confirmer_telegram_id=2)
+    await deals.complete_deal(deal_id, completer_telegram_id=1)
+    await deals.create_review(deal_id, reviewer_telegram_id=1, rating=5)
+    await deals.create_review(deal_id, reviewer_telegram_id=2, rating=4)
+
+    # Simulate PB relation values coming back as one-item arrays.
+    deal = await deals.get_deal(deal_id)
+    assert deal is not None
+    deal["initiator_id"] = [deal["initiator_id"]]
+    deal["counterparty_id"] = [deal["counterparty_id"]]
+
+    all_reviews = await fake_pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
+    for r in all_reviews.get("items", []):
+        r["reviewer_id"] = [r["reviewer_id"]]
+
+    visible = await deals.get_deal_reviews(deal_id)
+    assert len(visible) == 2

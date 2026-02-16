@@ -21,6 +21,20 @@ class DealService:
         self.pb = pb or pb_client
         self.reputation = reputation or reputation_service
 
+    @staticmethod
+    def _relation_id(value: object) -> str | None:
+        """
+        PocketBase relation fields may appear as a string ID or a single-item list.
+        Normalize either shape to one string ID.
+        """
+        if isinstance(value, str) and value:
+            return value
+        if isinstance(value, list) and value:
+            first = value[0]
+            if isinstance(first, str) and first:
+                return first
+        return None
+
     async def create_deal(
         self,
         initiator_telegram_id: int,
@@ -69,9 +83,9 @@ class DealService:
         deal = await self.get_deal(deal_id)
         if not deal:
             raise ValueError("Deal not found")
-        initiator_id = deal.get("initiator_id")
-        counterparty_id = deal.get("counterparty_id")
-        if not isinstance(initiator_id, str) or not isinstance(counterparty_id, str):
+        initiator_id = self._relation_id(deal.get("initiator_id"))
+        counterparty_id = self._relation_id(deal.get("counterparty_id"))
+        if not initiator_id or not counterparty_id:
             raise ValueError("Deal participants missing")
         return (await self._get_member_telegram_id(initiator_id), await self._get_member_telegram_id(counterparty_id))
 
@@ -266,11 +280,12 @@ class DealService:
 
         reviewee_id = counterparty_id if reviewer_id == initiator_id else initiator_id
 
-        existing_reviews = await self.pb.list_records(
-            "reviews", filter=f'deal_id="{deal_id}" && reviewer_id="{reviewer_id}"'
-        )
-        if existing_reviews.get("items"):
-            raise ValueError("You have already reviewed this deal")
+        # Relation filter behavior can vary by backend shape (string vs 1-item list),
+        # so do a robust duplicate check across all reviews for the deal.
+        existing_reviews = await self.pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
+        for r in existing_reviews.get("items", []):
+            if self._relation_id(r.get("reviewer_id")) == reviewer_id:
+                raise ValueError("You have already reviewed this deal")
 
         reviewee = await self.pb.get_record("members", reviewee_id)
         review = await self.pb.review_create(
@@ -300,12 +315,21 @@ class DealService:
         }
 
     async def get_deal_reviews(self, deal_id: str) -> list[dict]:
+        deal = await self.get_deal(deal_id)
+        if not deal:
+            return []
+
+        initiator_id = self._relation_id(deal.get("initiator_id"))
+        counterparty_id = self._relation_id(deal.get("counterparty_id"))
+        if not initiator_id or not counterparty_id:
+            return []
+
         result = await self.pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
         items = result.get("items", [])
 
-        # Hide reviews until both parties have left a review.
-        reviewer_ids = {r.get("reviewer_id") for r in items if r.get("reviewer_id")}
-        if len(reviewer_ids) < 2:
+        # Hide reviews until both specific participants have submitted reviews.
+        reviewer_ids = {self._relation_id(r.get("reviewer_id")) for r in items}
+        if initiator_id not in reviewer_ids or counterparty_id not in reviewer_ids:
             return []
         return items
 
