@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 
 import { escapePbString, isTelegramUsername, pbList } from "@/lib/pocketbase";
 import { processTextForSatori } from "@/lib/hebrew-rtl";
+import { CTB_LOGO_BASE64 } from "@/lib/logo-base64";
 import type { MemberRecord, ReputationRecord, ReviewRecord } from "@/lib/types";
 
 export const runtime = "edge";
@@ -266,8 +267,11 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
               color: "rgba(16,17,20,0.35)",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
+              alignItems: "center",
+              gap: 12,
             }}
           >
+            <img src={CTB_LOGO_BASE64} style={{ width: 40, height: 40 }} />
             commontrust.credit
           </div>
         </div>

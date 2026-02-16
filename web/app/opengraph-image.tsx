@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { CTB_LOGO_BASE64 } from "@/lib/logo-base64";
 
 export const runtime = "edge";
 export const alt = "Trust Ledger — Public reputation filings for peer-to-peer trades";
@@ -119,8 +120,10 @@ export default async function OgImage() {
               color: "rgba(16,17,20,0.4)",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
+              alignItems: "center",
             }}
           >
+            <img src={CTB_LOGO_BASE64} style={{ width: 32, height: 32 }} />
             Powered by CommonTrust Bot
           </div>
         </div>
