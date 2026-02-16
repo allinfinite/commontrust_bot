@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { escapePbString, pbList } from "@/lib/pocketbase";
+import { pbAdminGet } from "@/lib/pocketbase_admin";
 import type { ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
@@ -18,7 +19,14 @@ export default async function ReviewPage(props: { params: Promise<{ id: string }
     expand: "reviewer_id,reviewee_id,deal_id",
     revalidateSeconds: 60
   });
-  const r = reviewRes.items[0] ?? null;
+  let r = reviewRes.items[0] ?? null;
+  if (!r && process.env.POCKETBASE_ADMIN_TOKEN) {
+    try {
+      r = await pbAdminGet<ReviewRecord>("reviews", reviewId, "reviewer_id,reviewee_id,deal_id");
+    } catch {
+      // Keep notFound behavior below if the record truly doesn't exist or isn't accessible.
+    }
+  }
   if (!r) notFound();
 
   const dealId = r.deal_id;
