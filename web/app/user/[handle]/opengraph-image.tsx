@@ -271,7 +271,7 @@ export default async function OgImage({ params }: { params: Promise<{ handle: st
               gap: 12,
             }}
           >
-            <img src={CTB_LOGO_BASE64} style={{ width: 40, height: 40 }} />
+            <img src={CTB_LOGO_BASE64} style={{ width: 56, height: 56 }} />
             commontrust.credit
           </div>
         </div>

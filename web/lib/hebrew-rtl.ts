@@ -1,13 +1,13 @@
 /**
  * Detect and handle Hebrew/RTL text for Satori OG image rendering.
- * Satori doesn't support RTL text properly, so we reverse the character order
- * for Hebrew text to work around this limitation.
+ * Satori doesn't fully support RTL, so we reverse only the Hebrew character
+ * segments while keeping English/Latin segments intact.
  */
 
-const HEBREW_RANGE = /[\u0590-\u05FF]/g;
+const HEBREW_CHAR = /[\u0590-\u05FF]/;
 
 export function hasHebrew(text: string): boolean {
-  return HEBREW_RANGE.test(text);
+  return HEBREW_CHAR.test(text);
 }
 
 export function reverseHebrewText(text: string): string {
@@ -15,11 +15,38 @@ export function reverseHebrewText(text: string): string {
     return text;
   }
 
-  // Split into array of characters (handling emojis and multi-byte chars)
+  // Split into segments of Hebrew vs non-Hebrew, reverse only Hebrew segments
   const chars = Array.from(text);
-  
-  // Reverse the order
-  return chars.reverse().join('');
+  let result = "";
+  let segment = "";
+  let segmentIsHebrew = false;
+
+  for (const ch of chars) {
+    const chIsHebrew = HEBREW_CHAR.test(ch);
+
+    if (segment === "") {
+      segment = ch;
+      segmentIsHebrew = chIsHebrew;
+    } else if (chIsHebrew === segmentIsHebrew) {
+      segment += ch;
+    } else {
+      // Flush previous segment
+      result += segmentIsHebrew
+        ? Array.from(segment).reverse().join("")
+        : segment;
+      segment = ch;
+      segmentIsHebrew = chIsHebrew;
+    }
+  }
+
+  // Flush final segment
+  if (segment) {
+    result += segmentIsHebrew
+      ? Array.from(segment).reverse().join("")
+      : segment;
+  }
+
+  return result;
 }
 
 export function processTextForSatori(text: string): string {
