@@ -66,9 +66,20 @@ export default async function ReviewsPage(props: { searchParams?: Promise<{ q?: 
                   <span className="off">{s.off}</span>
                 </div>
                 {r.outcome ? <span className="pill">Outcome: {r.outcome}</span> : null}
+                <Link className="pill" href={`/reviews/${encodeURIComponent(r.id)}`}>
+                  Open filing
+                </Link>
               </div>
 
               {r.comment ? <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{r.comment}</div> : null}
+              {r.response ? (
+                <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                  <div className="muted" style={{ fontWeight: 800 }}>
+                    Response {r.response_at ? `(${formatDate(r.response_at)})` : ""}
+                  </div>
+                  <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{r.response}</div>
+                </div>
+              ) : null}
               {deal?.description ? (
                 <div className="muted" style={{ marginTop: 10 }}>
                   Deal: {deal.description}

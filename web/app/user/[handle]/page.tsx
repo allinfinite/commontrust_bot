@@ -178,6 +178,14 @@ export default async function UserPage(props: { params: Promise<{ handle: string
                   </div>
 
                   {r.comment ? <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{r.comment}</div> : null}
+                  {r.response ? (
+                    <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                      <div className="muted" style={{ fontWeight: 800 }}>
+                        Response {r.response_at ? `(${formatDate(r.response_at)})` : ""}
+                      </div>
+                      <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{r.response}</div>
+                    </div>
+                  ) : null}
                   {deal?.description ? (
                     <div className="muted" style={{ marginTop: 10 }}>
                       Deal: {deal.description}
@@ -364,6 +372,14 @@ export default async function UserPage(props: { params: Promise<{ handle: string
                 </div>
 
                 {r.comment ? <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{r.comment}</div> : null}
+                {r.response ? (
+                  <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                    <div className="muted" style={{ fontWeight: 800 }}>
+                      Response {r.response_at ? `(${formatDate(r.response_at)})` : ""}
+                    </div>
+                    <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{r.response}</div>
+                  </div>
+                ) : null}
                 {deal?.description ? (
                   <div className="muted" style={{ marginTop: 10 }}>
                     Deal: {deal.description}

@@ -22,6 +22,8 @@ export type ReviewRecord = PbRecordBase & {
   reviewee_id: string;
   rating: number;
   comment?: string;
+  response?: string;
+  response_at?: string;
   outcome?: "positive" | "neutral" | "negative";
   reviewer_username?: string;
   reviewee_username?: string;

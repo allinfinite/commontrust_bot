@@ -175,17 +175,27 @@
         "type": "number",
         "required": true
       },
-      {
-        "name": "comment",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "outcome",
-        "type": "select",
-        "required": true,
-        "values": ["positive", "neutral", "negative"]
-      },
+	      {
+	        "name": "comment",
+	        "type": "text",
+	        "required": false
+	      },
+	      {
+	        "name": "response",
+	        "type": "text",
+	        "required": false
+	      },
+	      {
+	        "name": "response_at",
+	        "type": "datetime",
+	        "required": false
+	      },
+	      {
+	        "name": "outcome",
+	        "type": "select",
+	        "required": true,
+	        "values": ["positive", "neutral", "negative"]
+	      },
       {
         "name": "reviewer_username",
         "type": "text",

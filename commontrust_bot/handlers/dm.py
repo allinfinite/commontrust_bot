@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from commontrust_bot.services.deal import deal_service
 from commontrust_bot.ui import complete_kb, review_kb
+from commontrust_bot.review_notify import maybe_dm_reviewee_with_respond_link
 from commontrust_bot.web_links import deal_reviews_url, user_reviews_url, user_reviews_url_by_telegram_id
 
 router = Router()
@@ -275,5 +276,9 @@ async def maybe_capture_review_comment(message: Message) -> None:
         else:
             view = f"\n\nReviewed user:\n{html.quote(profile_url)}" if profile_url else ""
             await message.answer("Review submitted. Thanks!" + view, parse_mode="HTML")
+
+        bot = getattr(message, "bot", None)
+        if bot is not None:
+            await maybe_dm_reviewee_with_respond_link(bot, result=result)
     except Exception as e:
         await message.answer(f"Failed to submit review: {e}")

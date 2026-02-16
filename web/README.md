@@ -67,3 +67,10 @@ It uses:
 - `ADMIN_COOKIE_SECRET`
 
 Without both env vars, `/admin` will not be accessible.
+
+## Review Responses
+
+If you want the reviewee to respond publicly on the ledger website, configure:
+- `REVIEW_RESPONSE_SECRET` (shared with the bot; used to sign response links)
+
+The bot will DM the reviewee a private response link after a review is filed.

@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from commontrust_bot.services.deal import deal_service
+from commontrust_bot.review_notify import maybe_dm_reviewee_with_respond_link
 from commontrust_bot.ui import review_kb
 from commontrust_bot.web_links import deal_reviews_url, user_reviews_url, user_reviews_url_by_telegram_id
 
@@ -217,6 +218,10 @@ async def cmd_review(message: Message) -> None:
             f"{profile_line}",
             parse_mode="HTML",
         )
+        # Best-effort DM to reviewee with a website response link.
+        bot = getattr(message, "bot", None)
+        if bot is not None:
+            await maybe_dm_reviewee_with_respond_link(bot, result=result)
     except ValueError as e:
         await message.answer(f"Failed to submit review: {e}")
     except Exception as e:

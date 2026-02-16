@@ -123,6 +123,14 @@ export default async function HomePage() {
                       </div>
 
                       {r.comment ? <div className="ledgerBody clamp3">{r.comment}</div> : null}
+                      {r.response ? (
+                        <div className="ledgerBody clamp3" style={{ marginTop: 10 }}>
+                          <span className="muted" style={{ fontWeight: 800 }}>
+                            Response{r.response_at ? ` (${formatDate(r.response_at)})` : ""}:
+                          </span>{" "}
+                          {r.response}
+                        </div>
+                      ) : null}
                       {deal?.description ? <div className="muted clamp2">Deal: {deal.description}</div> : null}
                     </div>
                   </article>

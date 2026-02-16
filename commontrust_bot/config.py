@@ -34,6 +34,10 @@ class Settings(BaseSettings):
         default="",
         description="Optional public website base URL (e.g. https://commontrust.example.com)",
     )
+    review_response_secret: str = Field(
+        default="",
+        description="HMAC secret for signing review response links (shared with web app)",
+    )
 
     @property
     def is_configured(self) -> bool:

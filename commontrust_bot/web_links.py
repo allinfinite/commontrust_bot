@@ -29,3 +29,23 @@ def user_reviews_url_by_telegram_id(telegram_id: int | None) -> str | None:
     if not telegram_id:
         return None
     return f"{base.rstrip('/')}/user/{telegram_id}"
+
+
+def review_url(review_id: str) -> str | None:
+    base = (settings.commontrust_web_url or "").strip()
+    if not base:
+        return None
+    rid = (review_id or "").strip()
+    if not rid:
+        return None
+    return f"{base.rstrip('/')}/reviews/{quote(rid)}"
+
+
+def review_respond_url(token: str) -> str | None:
+    base = (settings.commontrust_web_url or "").strip()
+    if not base:
+        return None
+    t = (token or "").strip()
+    if not t:
+        return None
+    return f"{base.rstrip('/')}/respond/{quote(t)}"
