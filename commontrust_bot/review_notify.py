@@ -67,7 +67,12 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
             f"<b>Deal ID:</b> <code>{html.quote(str(deal_id))}</code>" if deal_id else "",
         ]
         if respond:
-            lines.extend(["", "<b>To respond:</b> Reply to this message or click the button below."])
+            lines.extend([
+                "",
+                "💬 <b>To post a public response:</b>",
+                "Simply reply to this message with your response text.",
+                "It will be published on the ledger for everyone to see.",
+            ])
         if view:
             lines.append(f"<b>View filing:</b> {html.quote(view)}")
         if profile:
@@ -75,8 +80,7 @@ async def maybe_dm_reviewee_with_respond_link(bot: object, *, result: dict) -> N
         lines = [line for line in lines if line != ""]
 
         rows: list[list[InlineKeyboardButton]] = []
-        if respond:
-            rows.append([InlineKeyboardButton(text="Public Response", url=respond)])
+        # Only show "Open Review" button - users should reply to message for responses
         if view:
             rows.append([InlineKeyboardButton(text="Open Review", url=view)])
         keyboard = InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
