@@ -118,3 +118,15 @@ async def test_cmd_help_no_angle_bracket_placeholders(monkeypatch) -> None:
     text = msg.answers[-1]["text"]
     assert "<description>" not in text
     assert "<deal_id>" not in text
+
+
+@pytest.mark.asyncio
+async def test_cmd_help_prioritizes_newdeal_flow(monkeypatch) -> None:
+    from commontrust_bot.handlers import basic as basic_handlers
+
+    msg = FakeMessage(text="/help", from_user=FakeUser(1), chat=FakeChat(100, "private"))
+    await basic_handlers.cmd_help(msg)  # type: ignore[arg-type]
+    text = msg.answers[-1]["text"]
+    assert "Do this first (required)" in text
+    assert "/newdeal description" in text
+    assert "Send the generated link to the other user" in text

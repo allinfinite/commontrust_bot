@@ -29,6 +29,9 @@ export default async function HomePage() {
           <Link className="btn btnPrimary" href="/reviews">
             Browse all reviews
           </Link>
+          <Link className="pill" href="/how-to">
+            How to start a deal
+          </Link>
           <div className="homeMeta">
             {reviewsRes.ok ? (
               <>
@@ -154,19 +157,26 @@ export default async function HomePage() {
               <ol className="steps">
                 <li>
                   <span className="stepsN">1</span>
-                  <span>Make a deal in Telegram.</span>
+                  <span>
+                    In DM, run <span className="mono">/newdeal description</span>.
+                  </span>
                 </li>
                 <li>
                   <span className="stepsN">2</span>
-                  <span>Complete and confirm.</span>
+                  <span>Send the generated invite link to the other user.</span>
                 </li>
                 <li>
                   <span className="stepsN">3</span>
-                  <span>Both sides leave a review.</span>
+                  <span>Complete the deal and both sides leave a review.</span>
                 </li>
               </ol>
               <div className="muted" style={{ marginTop: 10 }}>
                 Search works best by <span className="mono">@username</span>.
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Link className="pill" href="/how-to">
+                  Full how-to guide
+                </Link>
               </div>
             </div>
           </aside>

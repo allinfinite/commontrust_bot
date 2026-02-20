@@ -562,6 +562,44 @@ main {
   letter-spacing: 0.15px;
 }
 
+/* How-to page */
+.howtoWrap {
+  display: grid;
+  gap: 14px;
+}
+
+.howtoHero {
+  border: 1px solid var(--hairline);
+  border-radius: 22px;
+  padding: 16px;
+  background:
+    radial-gradient(780px 360px at 12% 10%, rgba(27, 77, 143, 0.09), transparent 60%),
+    radial-gradient(720px 340px at 90% 14%, rgba(182, 27, 46, 0.11), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.62));
+  box-shadow: 0 18px 44px rgba(16, 17, 20, 0.09);
+}
+
+.howtoGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.howtoStep {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.howtoStep code,
+.homeDek code {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: rgba(16, 17, 20, 0.07);
+  border: 1px solid rgba(16, 17, 20, 0.12);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
 @media (min-width: 700px) {
   main {
     padding: 24px 16px 64px;
@@ -616,6 +654,15 @@ main {
 
   .homeHero {
     padding: 20px;
+  }
+
+  .howtoHero {
+    padding: 20px;
+  }
+
+  .howtoGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
   }
 
   .homeCtas {

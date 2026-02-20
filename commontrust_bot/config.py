@@ -34,6 +34,10 @@ class Settings(BaseSettings):
         default="",
         description="Optional public website base URL (e.g. https://commontrust.example.com)",
     )
+    commontrust_howto_image_url: str = Field(
+        default="",
+        description="Optional public image URL sent to new users on /start",
+    )
     review_response_secret: str = Field(
         default="",
         description="HMAC secret for signing review response links (shared with web app)",

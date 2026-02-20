@@ -1,4 +1,4 @@
-from commontrust_bot.web_links import deal_reviews_url, review_respond_url, review_url
+from commontrust_bot.web_links import deal_reviews_url, how_to_url, review_respond_url, review_url
 from commontrust_bot.config import settings
 
 
@@ -20,3 +20,8 @@ def test_review_url_builds(monkeypatch) -> None:
 def test_review_respond_url_builds(monkeypatch) -> None:
     monkeypatch.setattr(settings, "commontrust_web_url", "https://example.com/", raising=False)
     assert review_respond_url("tok") == "https://example.com/respond/tok"
+
+
+def test_how_to_url_builds(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "commontrust_web_url", "https://example.com/", raising=False)
+    assert how_to_url() == "https://example.com/how-to"

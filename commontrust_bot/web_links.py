@@ -49,3 +49,10 @@ def review_respond_url(token: str) -> str | None:
     if not t:
         return None
     return f"{base.rstrip('/')}/respond/{quote(t)}"
+
+
+def how_to_url() -> str | None:
+    base = (settings.commontrust_web_url or "").strip()
+    if not base:
+        return None
+    return f"{base.rstrip('/')}/how-to"

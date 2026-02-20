@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-import { pbList } from "@/lib/pocketbase";
+import { pbAdminList } from "@/lib/pocketbase_admin";
 
 export const dynamic = "force-dynamic";
 
 async function count(collection: string): Promise<number> {
-  const r = await pbList<{ id: string }>(collection, { perPage: 1, revalidateSeconds: 10 });
+  const r = await pbAdminList<{ id: string }>(collection, { perPage: 1 });
   return r.totalItems;
 }
 
