@@ -25,6 +25,14 @@ export default function HowToPage() {
       </div>
 
       <div className="howtoGrid">
+        <article className="card howtoImageCard">
+          <img
+            src="/how-to-image.png"
+            alt="Step-by-step CommonTrust bot instructions for creating and sharing a /newdeal invite link"
+            className="howtoImage"
+          />
+        </article>
+
         <article className="card">
           <h2 className="sectionTitle">Step 1 (required)</h2>
           <p className="howtoStep">

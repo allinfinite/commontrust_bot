@@ -585,6 +585,18 @@ main {
   gap: 12px;
 }
 
+.howtoImageCard {
+  padding: 10px;
+}
+
+.howtoImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+}
+
 .howtoStep {
   margin: 10px 0 0;
   font-size: 16px;
@@ -661,8 +673,12 @@ main {
   }
 
   .howtoGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
+  }
+
+  .howtoImageCard {
+    grid-column: span 4;
   }
 
   .homeCtas {

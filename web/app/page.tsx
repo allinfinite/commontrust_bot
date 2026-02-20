@@ -26,11 +26,11 @@ export default async function HomePage() {
           Search for a user above, or browse the archive.
         </p>
         <div className="homeCtas">
-          <Link className="btn btnPrimary" href="/reviews">
-            Browse all reviews
+          <Link className="btn btnPrimary" href="/how-to">
+            How to start (required)
           </Link>
-          <Link className="pill" href="/how-to">
-            How to start a deal
+          <Link className="pill" href="/reviews">
+            Browse all reviews
           </Link>
           <div className="homeMeta">
             {reviewsRes.ok ? (
@@ -158,24 +158,30 @@ export default async function HomePage() {
                 <li>
                   <span className="stepsN">1</span>
                   <span>
-                    In DM, run <span className="mono">/newdeal description</span>.
+                    In DM, run <span className="mono">/newdeal Car rental Feb 16-21</span>.
                   </span>
                 </li>
                 <li>
                   <span className="stepsN">2</span>
-                  <span>Send the generated invite link to the other user.</span>
+                  <span>
+                    Send the generated <span className="mono">https://t.me/commontrust_bot?start=deal_...</span>{" "}
+                    link to the other user.
+                  </span>
                 </li>
                 <li>
                   <span className="stepsN">3</span>
-                  <span>Complete the deal and both sides leave a review.</span>
+                  <span>
+                    Finish with <span className="mono">/complete deal_id</span>, then leave a review with{" "}
+                    <span className="mono">/review deal_id 5 Great seller</span>.
+                  </span>
                 </li>
               </ol>
               <div className="muted" style={{ marginTop: 10 }}>
                 Search works best by <span className="mono">@username</span>.
               </div>
               <div style={{ marginTop: 10 }}>
-                <Link className="pill" href="/how-to">
-                  Full how-to guide
+                <Link className="btn btnPrimary" href="/how-to">
+                  Open full how-to page
                 </Link>
               </div>
             </div>

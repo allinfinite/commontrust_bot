@@ -54,6 +54,8 @@ services:
       - POCKETBASE_ADMIN_TOKEN=${POCKETBASE_ADMIN_TOKEN}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_COOKIE_SECRET=${ADMIN_COOKIE_SECRET}
+      # Kept at stack level so Coolify can manage the same value used by commontrust_bot /start onboarding.
+      - COMMONTRUST_HOWTO_IMAGE_URL=${COMMONTRUST_HOWTO_IMAGE_URL}
     ports:
       - "3000:3000"
 

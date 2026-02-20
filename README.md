@@ -40,6 +40,7 @@ cp .env.example .env
 - `POCKETBASE_URL` + auth (`POCKETBASE_ADMIN_TOKEN` preferred, or email/password)
 - `VENICE_API_KEY` (for AI report analysis)
 - `COMMONTRUST_WEB_URL` (public website URL)
+- `COMMONTRUST_HOWTO_IMAGE_URL` (public image URL sent on `/start`; optional but recommended)
 - `REVIEW_RESPONSE_SECRET` (generate with `openssl rand -hex 32`)
 
 3. Run locally:
@@ -74,6 +75,7 @@ docker compose up -d
 ### Coolify
 
 Use `docker-compose.coolify.yml` as the compose file. Enable "Auto Deploy on Push" for continuous deployment.
+Also add `COMMONTRUST_HOWTO_IMAGE_URL` in your Coolify app Environment Variables so new users receive the onboarding image on `/start`.
 
 ## Environment Variables
 
@@ -88,6 +90,7 @@ Use `docker-compose.coolify.yml` as the compose file. Enable "Auto Deploy on Pus
 | `VENICE_API_KEY` | No | Venice.ai API key for AI report analysis |
 | `AI_MODEL` | No | Venice.ai model (default: `qwen3-next-80b`) |
 | `COMMONTRUST_WEB_URL` | No | Public website URL for review links |
+| `COMMONTRUST_HOWTO_IMAGE_URL` | No | Public URL of the onboarding how-to image sent on `/start` |
 | `REVIEW_RESPONSE_SECRET` | No | HMAC secret for signed review response links |
 | `COMMONTRUST_API_TOKEN` | No | API authentication token |
 
