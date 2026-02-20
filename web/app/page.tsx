@@ -158,31 +158,20 @@ export default async function HomePage() {
                 <li>
                   <span className="stepsN">1</span>
                   <span>
-                    In DM, run <span className="mono">/newdeal Car rental Feb 16-21</span>.
+                    In DM, run <span className="mono">/newdeal description</span>.
                   </span>
                 </li>
                 <li>
                   <span className="stepsN">2</span>
-                  <span>
-                    Send the generated <span className="mono">https://t.me/commontrust_bot?start=deal_...</span>{" "}
-                    link to the other user.
-                  </span>
+                  <span>Complete and confirm.</span>
                 </li>
                 <li>
                   <span className="stepsN">3</span>
-                  <span>
-                    Finish with <span className="mono">/complete deal_id</span>, then leave a review with{" "}
-                    <span className="mono">/review deal_id 5 Great seller</span>.
-                  </span>
+                  <span>Both sides leave a review.</span>
                 </li>
               </ol>
               <div className="muted" style={{ marginTop: 10 }}>
                 Search works best by <span className="mono">@username</span>.
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <Link className="btn btnPrimary" href="/how-to">
-                  Open full how-to page
-                </Link>
               </div>
             </div>
           </aside>
