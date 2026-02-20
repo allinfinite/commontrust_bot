@@ -158,15 +158,20 @@ export default async function HomePage() {
                 <li>
                   <span className="stepsN">1</span>
                   <span>
-                    In DM, run <span className="mono">/newdeal description</span>.
+                    DM <span className="mono">@commontrust_bot</span> with{" "}
+                    <span className="mono">/newdeal &quot;description&quot;</span>
                   </span>
                 </li>
                 <li>
                   <span className="stepsN">2</span>
-                  <span>Complete and confirm.</span>
+                  <span>Send link to the person you are doing business with.</span>
                 </li>
                 <li>
                   <span className="stepsN">3</span>
+                  <span>Complete and confirm.</span>
+                </li>
+                <li>
+                  <span className="stepsN">4</span>
                   <span>Both sides leave a review.</span>
                 </li>
               </ol>
