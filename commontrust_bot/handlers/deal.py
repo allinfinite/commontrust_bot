@@ -185,11 +185,21 @@ async def cmd_cancel(message: Message) -> None:
 @router.message(Command("review"))
 async def cmd_review(message: Message) -> None:
     args = message.text.split(maxsplit=3)
-    if len(args) < 3:
-        await message.answer("Usage: /review deal_id rating(1-5) [comment]")
+    if len(args) < 2:
+        await message.answer("Usage: /review deal_id [rating(1-5)] [comment]")
         return
 
     deal_id = args[1].strip()
+    if len(args) == 2:
+        await message.answer(
+            "Leave a review for your completed deal:\n\n"
+            f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n\n"
+            "Tap a rating (1-5). After that you can optionally send a comment, or /skip.",
+            parse_mode="HTML",
+            reply_markup=review_kb(deal_id),
+        )
+        return
+
     try:
         rating = int(args[2])
     except ValueError:

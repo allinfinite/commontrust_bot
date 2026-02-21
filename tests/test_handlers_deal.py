@@ -109,6 +109,20 @@ async def test_cmd_review_usage(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_cmd_review_with_deal_id_shows_rating_buttons(monkeypatch) -> None:
+    pb = FakePocketBase()
+    rep = ReputationService(pb=pb)
+    deals = DealService(pb=pb, reputation=rep)
+    monkeypatch.setattr(deal_handlers, "deal_service", deals)
+
+    msg = FakeMessage(text="/review deal_123", from_user=FakeUser(1), chat=FakeChat(100, "group"))
+    await deal_handlers.cmd_review(msg)  # type: ignore[arg-type]
+
+    assert "Tap a rating (1-5)" in msg.answers[-1]["text"]
+    assert msg.answers[-1].get("reply_markup") is not None
+
+
+@pytest.mark.asyncio
 async def test_cmd_help_no_angle_bracket_placeholders(monkeypatch) -> None:
     # /help previously used angle-bracket placeholders which break HTML parse mode.
     from commontrust_bot.handlers import basic as basic_handlers
