@@ -189,17 +189,35 @@ async def cb_review_rating(query: CallbackQuery) -> None:
         return
 
     user_id = query.from_user.id
-    _PENDING_REVIEW_COMMENT[user_id] = (deal_id, rating)
-    await deal_service.reputation.get_or_create_member(
-        query.from_user.id, query.from_user.username, query.from_user.full_name
-    )
-
-    await query.answer("Rating selected.")
-    await query.message.answer(
-        f"Got it: <b>{rating}</b>.\n\n"
-        "Send an optional comment now, or type /skip to submit without a comment.",
-        parse_mode="HTML",
-    )
+    try:
+        await deal_service.reputation.get_or_create_member(
+            query.from_user.id, query.from_user.username, query.from_user.full_name
+        )
+        result = await deal_service.create_review(
+            deal_id=deal_id,
+            reviewer_telegram_id=query.from_user.id,
+            rating=rating,
+            comment=None,
+            keep_existing_comment_if_none=True,
+        )
+        _PENDING_REVIEW_COMMENT[user_id] = (deal_id, rating)
+        if bool(result.get("review_updated")):
+            await query.answer("Rating updated.")
+            await query.message.answer(
+                f"Updated your rating to <b>{rating}</b>.\n\n"
+                "Send an optional new comment now, or type /skip to keep your current comment.",
+                parse_mode="HTML",
+            )
+        else:
+            await query.answer("Rating selected.")
+            await query.message.answer(
+                f"Got it: <b>{rating}</b>.\n\n"
+                "Send an optional comment now, or type /skip to submit without a comment.",
+                parse_mode="HTML",
+            )
+    except Exception as e:
+        await query.answer("Failed to save rating.", show_alert=True)
+        await query.message.answer(f"Failed to submit review: {e}")
 
 
 @router.callback_query(F.data.startswith("deal_complete:"))
@@ -351,8 +369,12 @@ async def maybe_capture_review_comment(message: Message) -> None:
         if not bool(result.get("deal_fully_reviewed")):
             await message.answer("waiting on their review")
             return
+        if bool(result.get("review_updated")):
+            await message.answer("Review updated.")
+        else:
+            await message.answer("Review submitted.")
         bot = getattr(message, "bot", None)
-        if bot is not None:
+        if bot is not None and bool(result.get("deal_just_fully_reviewed")):
             await maybe_dm_reviewee_with_respond_link(bot, result=result)
             # Also notify the final reviewer with the review they just received.
             try:

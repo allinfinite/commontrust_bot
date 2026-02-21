@@ -44,7 +44,7 @@ async def test_confirm_only_counterparty(fake_pb) -> None:
 
 
 @pytest.mark.asyncio
-async def test_review_updates_reputation_and_blocks_duplicates(fake_pb) -> None:
+async def test_review_updates_reputation_and_allows_edits(fake_pb) -> None:
     rep = ReputationService(pb=fake_pb)
     deals = DealService(pb=fake_pb, reputation=rep)
 
@@ -73,8 +73,13 @@ async def test_review_updates_reputation_and_blocks_duplicates(fake_pb) -> None:
     assert stats_after_two["avg_rating"] == 5.0
     assert stats_after_two["total_reviews"] == 1
 
-    with pytest.raises(ValueError, match="already reviewed"):
-        await deals.create_review(deal_id, reviewer_telegram_id=1, rating=5)
+    edited = await deals.create_review(deal_id, reviewer_telegram_id=1, rating=3, comment="updated")
+    assert edited["review_updated"] is True
+    assert edited["review_created"] is False
+    assert edited["deal_fully_reviewed"] is True
+    assert edited["deal_just_fully_reviewed"] is False
+    assert edited["review"]["rating"] == 3
+    assert edited["review"]["comment"] == "updated"
 
 
 @pytest.mark.asyncio

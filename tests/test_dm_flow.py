@@ -1,4 +1,5 @@
 import pytest
+from typing import Any
 
 from commontrust_bot.handlers import dm as dm_handlers
 from aiogram.dispatcher.event.bases import SkipHandler
@@ -26,6 +27,17 @@ class _FakeBot:
         msg.message_id = self._message_id_counter
         self._message_id_counter += 1
         return msg
+
+
+class _FakeCallbackQuery:
+    def __init__(self, data: str, from_user: FakeUser, message: FakeMessage) -> None:
+        self.data = data
+        self.from_user = from_user
+        self.message = message
+        self.answers: list[dict[str, Any]] = []
+
+    async def answer(self, text: str, **kwargs: Any) -> None:
+        self.answers.append({"text": text, **kwargs})
 
 
 @pytest.mark.asyncio
@@ -132,3 +144,43 @@ async def test_next_message_after_review_notification_submits_response(monkeypat
 
     # Verify pending state was cleared
     assert 2 not in review_notify._PENDING_REVIEW_RESPONSE
+
+
+@pytest.mark.asyncio
+async def test_clicking_different_star_updates_existing_review(monkeypatch) -> None:
+    pb = FakePocketBase()
+    rep = ReputationService(pb=pb)
+    deals = DealService(pb=pb, reputation=rep)
+    monkeypatch.setattr(dm_handlers, "deal_service", deals)
+
+    created = await deals.create_deal(
+        initiator_telegram_id=1,
+        counterparty_telegram_id=2,
+        group_telegram_id=100,
+        description="x",
+    )
+    deal_id = created["deal"]["id"]
+    await deals.confirm_deal(deal_id, confirmer_telegram_id=2)
+    await deals.complete_deal(deal_id, completer_telegram_id=1)
+
+    await deals.create_review(deal_id, reviewer_telegram_id=1, rating=2, comment="initial")
+
+    callback_message = FakeMessage(
+        text="pick rating",
+        from_user=FakeUser(1, "u1", "U1"),
+        chat=FakeChat(1, "private"),
+    )
+    query = _FakeCallbackQuery(
+        data=f"review:{deal_id}:5",
+        from_user=FakeUser(1, "u1", "U1"),
+        message=callback_message,
+    )
+
+    await dm_handlers.cb_review_rating(query)  # type: ignore[arg-type]
+
+    updated = await pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
+    assert updated["totalItems"] == 1
+    review = updated["items"][0]
+    assert review["rating"] == 5
+    assert review["comment"] == "initial"
+    assert "Rating updated." in query.answers[-1]["text"]

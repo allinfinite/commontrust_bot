@@ -211,11 +211,13 @@ async def cmd_review(message: Message) -> None:
         if not bool(result.get("deal_fully_reviewed")):
             await message.answer("waiting on their review")
             return
-        review = result.get("review") if isinstance(result, dict) else None
-        review_id = (review or {}).get("id") if isinstance(review, dict) else None
+        if bool(result.get("review_updated")):
+            await message.answer("Review updated.")
+        else:
+            await message.answer("Review submitted.")
         # Best-effort DM to reviewee with a website response link.
         bot = getattr(message, "bot", None)
-        if bot is not None:
+        if bot is not None and bool(result.get("deal_just_fully_reviewed")):
             await maybe_dm_reviewee_with_respond_link(bot, result=result)
             # Also notify the final reviewer with the review they just received.
             try:

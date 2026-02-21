@@ -269,6 +269,7 @@ class DealService:
         rating: int,
         comment: str | None = None,
         outcome: str = "positive",
+        keep_existing_comment_if_none: bool = False,
     ) -> dict:
         if not 1 <= rating <= 5:
             raise ValueError("Rating must be between 1 and 5")
@@ -297,23 +298,51 @@ class DealService:
         reviewee_id = counterparty_id if reviewer_id == initiator_id else initiator_id
 
         # Relation filter behavior can vary by backend shape (string vs 1-item list),
-        # so do a robust duplicate check across all reviews for the deal.
+        # so inspect all reviews for this deal and find the current reviewer's record.
         existing_reviews = await self.pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
-        existing_reviewer_ids = {self._relation_id(r.get("reviewer_id")) for r in existing_reviews.get("items", [])}
-        for r in existing_reviews.get("items", []):
-            if self._relation_id(r.get("reviewer_id")) == reviewer_id:
-                raise ValueError("You have already reviewed this deal")
+        existing_items = existing_reviews.get("items", [])
+        existing_reviewer_ids = {self._relation_id(r.get("reviewer_id")) for r in existing_items}
+        existing_review = next(
+            (r for r in existing_items if self._relation_id(r.get("reviewer_id")) == reviewer_id),
+            None,
+        )
+        was_fully_reviewed = initiator_id in existing_reviewer_ids and counterparty_id in existing_reviewer_ids
 
         reviewee = await self.pb.get_record("members", reviewee_id)
-        review = await self.pb.review_create(
-            deal_id=deal_id,
-            reviewer_id=reviewer_id,
-            reviewee_id=reviewee_id,
-            rating=rating,
-            comment=comment,
-            outcome=outcome,
-            reviewer_username=reviewer.get("username"),
-            reviewee_username=reviewee.get("username") if isinstance(reviewee, dict) else None,
+        comment_to_store = comment
+        review_updated = isinstance(existing_review, dict)
+        if review_updated and comment is None and keep_existing_comment_if_none:
+            existing_comment = existing_review.get("comment")
+            comment_to_store = existing_comment if isinstance(existing_comment, str) else None
+
+        if review_updated:
+            review = await self.pb.update_record(
+                "reviews",
+                str(existing_review.get("id")),
+                {
+                    "rating": rating,
+                    "comment": comment_to_store,
+                    "outcome": outcome,
+                    "reviewer_username": reviewer.get("username"),
+                    "reviewee_username": reviewee.get("username") if isinstance(reviewee, dict) else None,
+                },
+            )
+        else:
+            review = await self.pb.review_create(
+                deal_id=deal_id,
+                reviewer_id=reviewer_id,
+                reviewee_id=reviewee_id,
+                rating=rating,
+                comment=comment_to_store,
+                outcome=outcome,
+                reviewer_username=reviewer.get("username"),
+                reviewee_username=reviewee.get("username") if isinstance(reviewee, dict) else None,
+            )
+
+        current_reviewer_ids = existing_reviewer_ids | {reviewer_id}
+        is_fully_reviewed = (
+            initiator_id in current_reviewer_ids
+            and counterparty_id in current_reviewer_ids
         )
 
         # Recompute for both participants:
@@ -329,12 +358,12 @@ class DealService:
             "reviewer": reviewer,
             "reviewee": reviewee,
             "deal": deal,
-            # Determined from pre-insert state + current reviewer, so it's not affected by
-            # eventual consistency/stale GETs right after POST.
-            "deal_fully_reviewed": (
-                (initiator_id in (existing_reviewer_ids | {reviewer_id}))
-                and (counterparty_id in (existing_reviewer_ids | {reviewer_id}))
-            ),
+            "review_updated": review_updated,
+            "review_created": not review_updated,
+            # Determined from pre-action state + current reviewer, so it's not affected by
+            # eventual consistency/stale GETs right after write.
+            "deal_fully_reviewed": is_fully_reviewed,
+            "deal_just_fully_reviewed": (not was_fully_reviewed) and is_fully_reviewed,
         }
 
     async def get_deal_reviews(self, deal_id: str) -> list[dict]:
