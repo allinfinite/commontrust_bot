@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterable
+from datetime import datetime, timezone
 
 from commontrust_bot.config import settings
 from commontrust_bot.pocketbase_client import pb_client
@@ -26,8 +27,8 @@ def _aggregate_ratings_by_reviewer(reviews: Iterable[dict]) -> dict[str, float]:
 
 
 async def _deal_is_fully_reviewed(pb: object, deal_id: str) -> bool:
-    # Only expose reviews once both parties have reviewed. For 2-party deals,
-    # this means at least 2 distinct reviewers exist for that deal.
+    # Reviews are visible only if both parties reviewed and the deal is public.
+    # Legacy deals (created before publish timestamps) remain public when fully reviewed.
     try:
         result = await pb.list_records("reviews", filter=f'deal_id="{deal_id}"', per_page=200)
     except TypeError:
@@ -35,8 +36,36 @@ async def _deal_is_fully_reviewed(pb: object, deal_id: str) -> bool:
         result = await pb.list_records("reviews", filter=f'deal_id="{deal_id}"')
 
     items = result.get("items", []) if isinstance(result, dict) else []
-    reviewer_ids = {r.get("reviewer_id") for r in items if r.get("reviewer_id")}
-    return len(reviewer_ids) >= 2
+    reviewer_ids = set()
+    for r in items:
+        reviewer_id = r.get("reviewer_id")
+        if isinstance(reviewer_id, str) and reviewer_id:
+            reviewer_ids.add(reviewer_id)
+        elif isinstance(reviewer_id, list) and reviewer_id and isinstance(reviewer_id[0], str):
+            reviewer_ids.add(reviewer_id[0])
+    if len(reviewer_ids) < 2:
+        return False
+
+    deal: dict | None
+    try:
+        deal = await pb.deal_get(deal_id)
+    except Exception:
+        deal = None
+    if not isinstance(deal, dict):
+        return False
+
+    publish_at_raw = deal.get("reviews_publish_at")
+    if not isinstance(publish_at_raw, str) or not publish_at_raw.strip():
+        return True
+    try:
+        publish_at = datetime.fromisoformat(publish_at_raw.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if publish_at.tzinfo is None:
+        publish_at = publish_at.replace(tzinfo=timezone.utc)
+    else:
+        publish_at = publish_at.astimezone(timezone.utc)
+    return datetime.now(timezone.utc) >= publish_at
 
 
 def _visible_reviews(pb: object, reviews: Iterable[dict], fully_reviewed_deal_ids: set[str]) -> list[dict]:

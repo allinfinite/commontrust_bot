@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { pbList } from "@/lib/pocketbase";
+import { filterPublicReviews } from "@/lib/review_visibility";
 import type { ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
@@ -27,21 +28,22 @@ export default async function ReviewsPage(props: { searchParams?: Promise<{ q?: 
     perPage: 30,
     sort: "-created_at",
     expand: "reviewer_id,reviewee_id,deal_id",
-    revalidateSeconds: 60
+    noStore: true,
   });
+  const visibleReviews = await filterPublicReviews(reviews.items, true);
 
   return (
     <>
       <div className="row">
         <h1 className="pageTitle">All Reviews</h1>
-        <span className="pill">Total: {reviews.totalItems.toLocaleString("en-US")}</span>
+        <span className="pill">Visible on page: {visibleReviews.length.toLocaleString("en-US")}</span>
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
         For a specific user, use the search box above (recommended).
       </p>
 
       <div className="grid" style={{ marginTop: 12 }}>
-        {reviews.items.map((r) => {
+        {visibleReviews.map((r) => {
           const reviewer = r.expand?.reviewer_id;
           const reviewee = r.expand?.reviewee_id;
           const deal = r.expand?.deal_id;

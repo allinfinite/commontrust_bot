@@ -173,6 +173,8 @@ class FakePocketBase:
                 "initiator_offer": initiator_offer,
                 "counterparty_offer": counterparty_offer,
                 "status": "pending",
+                "reviews_publish_at": None,
+                "reviews_window_resets_used": 0,
             },
         )
 

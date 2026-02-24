@@ -16,6 +16,8 @@ export type MemberRecord = PbRecordBase & {
 export type DealRecord = PbRecordBase & {
   description?: string;
   status?: string;
+  reviews_publish_at?: string;
+  reviews_window_resets_used?: number;
 };
 
 export type ReviewRecord = PbRecordBase & {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { escapePbString, isTelegramUsername, pbList } from "@/lib/pocketbase";
+import { filterPublicReviews } from "@/lib/review_visibility";
 import type { MemberRecord, ReputationRecord, ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
@@ -29,7 +30,7 @@ export async function generateMetadata(
   const rep = await pbList<ReputationRecord>("reputation", {
     perPage: 1,
     filter: `member_id='${escapePbString(member.id)}'`,
-    revalidateSeconds: 60,
+    noStore: true,
   });
   const avgRating = rep.items[0]?.avg_rating;
   const verifiedDeals = rep.items[0]?.verified_deals ?? 0;
@@ -63,7 +64,7 @@ async function findMemberByHandle(handle: string): Promise<MemberRecord | null> 
     const list = await pbList<MemberRecord>("members", {
       perPage: 1,
       filter: `telegram_id=${Number(h)}`,
-      revalidateSeconds: 60
+      noStore: true
     });
     return list.items[0] ?? null;
   }
@@ -74,7 +75,7 @@ async function findMemberByHandle(handle: string): Promise<MemberRecord | null> 
   const list = await pbList<MemberRecord>("members", {
     perPage: 1,
     filter: `username='${u}'`,
-    revalidateSeconds: 60
+    noStore: true
   });
   return list.items[0] ?? null;
 }
@@ -83,7 +84,7 @@ async function getReputation(memberId: string): Promise<ReputationRecord | null>
   const rep = await pbList<ReputationRecord>("reputation", {
     perPage: 1,
     filter: `member_id='${escapePbString(memberId)}'`,
-    revalidateSeconds: 60
+    noStore: true
   });
   return rep.items[0] ?? null;
 }
@@ -119,45 +120,6 @@ export default async function UserPage(props: { params: Promise<{ handle: string
     console.error(`Failed to find member by handle: ${h}`, err);
   }
 
-  async function filterToFullyReviewedDeals(reviews: ReviewRecord[]): Promise<ReviewRecord[]> {
-    const dealIds = Array.from(new Set(reviews.map((r) => r.deal_id).filter((id): id is string => typeof id === "string" && id.length > 0)));
-    if (dealIds.length === 0) return reviews;
-
-    try {
-      // Match backend visibility rules:
-      // Only expose reviews once both parties have reviewed the deal (>= 2 distinct reviewers).
-      const filter = dealIds.map((id) => `deal_id='${escapePbString(id)}'`).join(" || ");
-      const dealReviews = await pbList<Pick<ReviewRecord, "deal_id" | "reviewer_id">>("reviews", {
-        perPage: 200,
-        filter: `(${filter})`,
-        fields: "deal_id,reviewer_id",
-        revalidateSeconds: 60
-      });
-
-      const reviewersByDeal = new Map<string, Set<string>>();
-      for (const r of dealReviews.items) {
-        if (!r.deal_id || !r.reviewer_id) continue;
-        let s = reviewersByDeal.get(r.deal_id);
-        if (!s) {
-          s = new Set<string>();
-          reviewersByDeal.set(r.deal_id, s);
-        }
-        s.add(r.reviewer_id);
-      }
-
-      const fullyReviewedDealIds = new Set<string>();
-      for (const [dealId, reviewers] of reviewersByDeal.entries()) {
-        if (reviewers.size >= 2) fullyReviewedDealIds.add(dealId);
-      }
-
-      return reviews.filter((r) => fullyReviewedDealIds.has(r.deal_id));
-    } catch (err) {
-      console.error("Failed to filter reviews by deal status:", err);
-      // Return all reviews - don't filter by deal status if we can't fetch deals
-      return reviews;
-    }
-  }
-
   // If we can't resolve a member record (e.g. legacy data missing username),
   // fall back to username-based review lookup.
   if (!member) {
@@ -170,9 +132,9 @@ export default async function UserPage(props: { params: Promise<{ handle: string
         sort: "-created_at",
         filter: `reviewee_username='${u}'`,
         expand: "reviewer_id,reviewee_id,deal_id",
-        revalidateSeconds: 60
+        noStore: true
       });
-      reviewsAbout = await filterToFullyReviewedDeals(result.items);
+      reviewsAbout = await filterPublicReviews(result.items, true);
     } catch (err) {
       console.error(`Failed to fetch reviews for username ${h}:`, err);
     }
@@ -199,7 +161,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
             <div className="card">
               <div style={{ fontWeight: 800 }}>No reviews found</div>
               <div className="muted" style={{ marginTop: 6 }}>
-                Reviews only appear after both parties have reviewed the deal.
+                Reviews appear only after both parties review and the 20-minute edit window ends.
               </div>
             </div>
           ) : (
@@ -284,20 +246,20 @@ export default async function UserPage(props: { params: Promise<{ handle: string
         sort: "-created_at",
         filter: `reviewee_id='${escapePbString(member.id)}'`,
         expand: "reviewer_id,reviewee_id,deal_id",
-        revalidateSeconds: 60
+        noStore: true
       }),
       pbList<ReviewRecord>("reviews", {
         perPage: 200,
         sort: "-created_at",
         filter: `reviewer_id='${escapePbString(member.id)}' || reviewee_id='${escapePbString(member.id)}'`,
         expand: "reviewer_id,reviewee_id",
-        revalidateSeconds: 60
+        noStore: true
       })
     ]);
     reputation = rep;
     reviewsAbout = reviews.items;
     reviewsByMember = byMember.items;
-    visibleReviewsAbout = await filterToFullyReviewedDeals(reviewsAbout);
+    visibleReviewsAbout = await filterPublicReviews(reviewsAbout, true);
   } catch (err) {
     console.error(`Failed to fetch member data for ${member.id}:`, err);
     // Continue with empty data - show basic member info without reviews
@@ -430,7 +392,7 @@ export default async function UserPage(props: { params: Promise<{ handle: string
           <div className="card">
             <div style={{ fontWeight: 800 }}>No reviews yet</div>
             <div className="muted" style={{ marginTop: 6 }}>
-              Reviews only appear after both parties have reviewed the deal.
+              Reviews appear only after both parties review and the 20-minute edit window ends.
             </div>
           </div>
         ) : (

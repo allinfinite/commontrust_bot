@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timedelta, timezone
 
 from commontrust_bot.services.deal import DealService, DealStatus
 from commontrust_bot.services.reputation import ReputationService
@@ -44,7 +45,7 @@ async def test_confirm_only_counterparty(fake_pb) -> None:
 
 
 @pytest.mark.asyncio
-async def test_review_updates_reputation_and_allows_edits(fake_pb) -> None:
+async def test_review_window_and_publish_gating(fake_pb) -> None:
     rep = ReputationService(pb=fake_pb)
     deals = DealService(pb=fake_pb, reputation=rep)
 
@@ -64,22 +65,112 @@ async def test_review_updates_reputation_and_allows_edits(fake_pb) -> None:
     stats_after_one = await rep.get_reputation(counterparty["id"])
     assert stats_after_one == {"verified_deals": 0, "avg_rating": 0.0, "total_reviews": 0}
 
-    # The second party reviews; now both reviews become visible and count.
+    # Second review starts the publish window; reviews are still hidden/publicly gated.
     second = await deals.create_review(deal_id, reviewer_telegram_id=2, rating=4)
     assert second["deal_fully_reviewed"] is True
+    assert second["deal_is_public"] is False
+    assert isinstance(second["reviews_publish_at"], str)
+    assert isinstance(second["seconds_until_lock"], int)
+    assert second["seconds_until_lock"] > 0
 
     stats_after_two = await rep.get_reputation(counterparty["id"])
-    assert stats_after_two["verified_deals"] == 1
-    assert stats_after_two["avg_rating"] == 5.0
-    assert stats_after_two["total_reviews"] == 1
+    assert stats_after_two["verified_deals"] == 0
+    assert stats_after_two["avg_rating"] == 0.0
+    assert stats_after_two["total_reviews"] == 0
 
     edited = await deals.create_review(deal_id, reviewer_telegram_id=1, rating=3, comment="updated")
     assert edited["review_updated"] is True
     assert edited["review_created"] is False
     assert edited["deal_fully_reviewed"] is True
-    assert edited["deal_just_fully_reviewed"] is False
+    assert edited["deal_is_public"] is False
     assert edited["review"]["rating"] == 3
     assert edited["review"]["comment"] == "updated"
+
+    # After publish time passes, ratings should become visible in reputation.
+    await fake_pb.update_record(
+        "deals",
+        deal_id,
+        {"reviews_publish_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()},
+    )
+    stats_after_publish = await rep.get_reputation(counterparty["id"])
+    assert stats_after_publish["verified_deals"] == 1
+    assert stats_after_publish["avg_rating"] == 3.0
+    assert stats_after_publish["total_reviews"] == 1
+
+
+@pytest.mark.asyncio
+async def test_review_window_single_reset_then_lock(fake_pb) -> None:
+    rep = ReputationService(pb=fake_pb)
+    deals = DealService(pb=fake_pb, reputation=rep)
+
+    created = await deals.create_deal(1, 2, 100, "x")
+    deal_id = created["deal"]["id"]
+    await deals.confirm_deal(deal_id, confirmer_telegram_id=2)
+    await deals.complete_deal(deal_id, completer_telegram_id=1)
+    await deals.create_review(deal_id, reviewer_telegram_id=1, rating=5)
+    await deals.create_review(deal_id, reviewer_telegram_id=2, rating=4)
+    await fake_pb.update_record(
+        "deals",
+        deal_id,
+        {"reviews_publish_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()},
+    )
+    await fake_pb.update_record(
+        "deals",
+        deal_id,
+        {"reviews_publish_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()},
+    )
+
+    # Force a very short remaining window, then edit to consume one-time extension.
+    short_publish_at = datetime.now(timezone.utc) + timedelta(seconds=30)
+    await fake_pb.update_record(
+        "deals",
+        deal_id,
+        {"reviews_publish_at": short_publish_at.isoformat(), "reviews_window_resets_used": 0},
+    )
+    first_edit = await deals.create_review(deal_id, reviewer_telegram_id=1, rating=2)
+    first_after = await fake_pb.get_record("deals", deal_id)
+    first_publish = datetime.fromisoformat(first_after["reviews_publish_at"].replace("Z", "+00:00"))
+    assert first_after.get("reviews_window_resets_used") == 1
+    assert first_publish > short_publish_at
+    assert first_edit["review"]["rating"] == 2
+
+    # A second edit does not extend again.
+    second_edit = await deals.create_review(deal_id, reviewer_telegram_id=1, rating=1)
+    second_after = await fake_pb.get_record("deals", deal_id)
+    assert second_after.get("reviews_window_resets_used") == 1
+    assert second_after["reviews_publish_at"] == first_after["reviews_publish_at"]
+    assert second_edit["review"]["rating"] == 1
+
+    # After lock time passes, edits are blocked.
+    await fake_pb.update_record(
+        "deals",
+        deal_id,
+        {"reviews_publish_at": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()},
+    )
+    with pytest.raises(ValueError, match="locked"):
+        await deals.create_review(deal_id, reviewer_telegram_id=1, rating=5)
+
+
+@pytest.mark.asyncio
+async def test_legacy_fully_reviewed_reviews_are_public_and_locked(fake_pb) -> None:
+    rep = ReputationService(pb=fake_pb)
+    deals = DealService(pb=fake_pb, reputation=rep)
+
+    created = await deals.create_deal(1, 2, 100, "x")
+    deal_id = created["deal"]["id"]
+    await deals.confirm_deal(deal_id, confirmer_telegram_id=2)
+    await deals.complete_deal(deal_id, completer_telegram_id=1)
+
+    m1 = await rep.get_or_create_member(1)
+    m2 = await rep.get_or_create_member(2)
+    await fake_pb.review_create(deal_id=deal_id, reviewer_id=m1["id"], reviewee_id=m2["id"], rating=5)
+    await fake_pb.review_create(deal_id=deal_id, reviewer_id=m2["id"], reviewee_id=m1["id"], rating=4)
+
+    visible = await deals.get_deal_reviews(deal_id)
+    assert len(visible) == 2
+
+    with pytest.raises(ValueError, match="locked"):
+        await deals.create_review(deal_id, reviewer_telegram_id=1, rating=3)
 
 
 @pytest.mark.asyncio
@@ -112,6 +203,11 @@ async def test_get_deal_reviews_handles_relation_list_shape(fake_pb) -> None:
     await deals.complete_deal(deal_id, completer_telegram_id=1)
     await deals.create_review(deal_id, reviewer_telegram_id=1, rating=5)
     await deals.create_review(deal_id, reviewer_telegram_id=2, rating=4)
+    await fake_pb.update_record(
+        "deals",
+        deal_id,
+        {"reviews_publish_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()},
+    )
 
     # Simulate PB relation values coming back as one-item arrays.
     deal = await deals.get_deal(deal_id)

@@ -1,7 +1,8 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
+from commontrust_bot.config import settings
 from commontrust_bot.pocketbase_client import pb_client
 from commontrust_bot.services.reputation import reputation_service
 
@@ -34,6 +35,19 @@ class DealService:
             if isinstance(first, str) and first:
                 return first
         return None
+
+    @staticmethod
+    def _parse_iso_datetime(value: object) -> datetime | None:
+        if not isinstance(value, str) or not value.strip():
+            return None
+        raw = value.strip()
+        try:
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
 
     async def create_deal(
         self,
@@ -307,6 +321,15 @@ class DealService:
             None,
         )
         was_fully_reviewed = initiator_id in existing_reviewer_ids and counterparty_id in existing_reviewer_ids
+        publish_at_dt = self._parse_iso_datetime(deal.get("reviews_publish_at"))
+        now_utc = datetime.now(timezone.utc)
+        resets_used_raw = deal.get("reviews_window_resets_used")
+        resets_used = int(resets_used_raw) if isinstance(resets_used_raw, (int, float)) else 0
+
+        legacy_fully_reviewed_locked = was_fully_reviewed and publish_at_dt is None
+        publish_window_locked = publish_at_dt is not None and now_utc >= publish_at_dt
+        if legacy_fully_reviewed_locked or publish_window_locked:
+            raise ValueError("Review is locked (edit window ended).")
 
         reviewee = await self.pb.get_record("members", reviewee_id)
         comment_to_store = comment
@@ -344,6 +367,51 @@ class DealService:
             initiator_id in current_reviewer_ids
             and counterparty_id in current_reviewer_ids
         )
+        deal_updates: dict[str, object] = {}
+
+        # Set initial publish cutoff when the second review arrives.
+        if is_fully_reviewed and publish_at_dt is None and not was_fully_reviewed:
+            publish_at_dt = now_utc + timedelta(minutes=settings.review_edit_window_minutes)
+            deal_updates["reviews_publish_at"] = publish_at_dt.isoformat()
+
+        # One-time extension if an edit happens during active window.
+        if (
+            is_fully_reviewed
+            and was_fully_reviewed
+            and review_updated
+            and publish_at_dt is not None
+            and now_utc < publish_at_dt
+            and resets_used < 1
+        ):
+            extended_publish_at = max(
+                publish_at_dt,
+                now_utc + timedelta(minutes=settings.review_edit_window_minutes),
+            )
+            publish_at_dt = extended_publish_at
+            deal_updates["reviews_publish_at"] = publish_at_dt.isoformat()
+            deal_updates["reviews_window_resets_used"] = 1
+            resets_used = 1
+
+        if deal_updates:
+            deal = await self.pb.update_record("deals", deal_id, deal_updates)
+        else:
+            # Keep returned deal shape aligned with computed values in case this is a test
+            # fake and fields don't yet exist on the stored record.
+            if publish_at_dt is not None:
+                deal["reviews_publish_at"] = publish_at_dt.isoformat()
+            if "reviews_window_resets_used" in deal:
+                deal["reviews_window_resets_used"] = resets_used
+
+        seconds_until_lock: int | None = None
+        deal_is_public = False
+        if is_fully_reviewed:
+            if publish_at_dt is None:
+                # Legacy fully-reviewed deals are public but immutable.
+                deal_is_public = True
+                seconds_until_lock = 0
+            else:
+                deal_is_public = now_utc >= publish_at_dt
+                seconds_until_lock = max(0, int((publish_at_dt - now_utc).total_seconds()))
 
         # Recompute for both participants:
         # When the second party submits their review, the deal becomes "fully reviewed"
@@ -364,6 +432,10 @@ class DealService:
             # eventual consistency/stale GETs right after write.
             "deal_fully_reviewed": is_fully_reviewed,
             "deal_just_fully_reviewed": (not was_fully_reviewed) and is_fully_reviewed,
+            "review_locked": False,
+            "reviews_publish_at": publish_at_dt.isoformat() if publish_at_dt is not None else None,
+            "seconds_until_lock": seconds_until_lock,
+            "deal_is_public": deal_is_public,
         }
 
     async def get_deal_reviews(self, deal_id: str) -> list[dict]:
@@ -382,6 +454,12 @@ class DealService:
         # Hide reviews until both specific participants have submitted reviews.
         reviewer_ids = {self._relation_id(r.get("reviewer_id")) for r in items}
         if initiator_id not in reviewer_ids or counterparty_id not in reviewer_ids:
+            return []
+        publish_at = self._parse_iso_datetime(deal.get("reviews_publish_at"))
+        if publish_at is None:
+            # Legacy fully-reviewed deals were already public.
+            return items
+        if datetime.now(timezone.utc) < publish_at:
             return []
         return items
 

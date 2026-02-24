@@ -44,6 +44,7 @@ export async function pbList<T>(
     expand?: string;
     fields?: string;
     revalidateSeconds?: number;
+    noStore?: boolean;
   } = {}
 ): Promise<PbListResponse<T>> {
   const url = pbUrl(`/api/collections/${collection}/records`, {
@@ -57,7 +58,9 @@ export async function pbList<T>(
 
   const res = await fetch(url, {
     headers: { ...getAuthHeaders() },
-    next: { revalidate: opts.revalidateSeconds ?? 60 }
+    ...(opts.noStore
+      ? { cache: "no-store" as const }
+      : { next: { revalidate: opts.revalidateSeconds ?? 60 } })
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -69,7 +72,7 @@ export async function pbList<T>(
 export async function pbGet<T>(
   collection: string,
   id: string,
-  opts: { expand?: string; fields?: string; revalidateSeconds?: number } = {}
+  opts: { expand?: string; fields?: string; revalidateSeconds?: number; noStore?: boolean } = {}
 ): Promise<T> {
   const url = pbUrl(`/api/collections/${collection}/records/${encodeURIComponent(id)}`, {
     expand: opts.expand,
@@ -77,7 +80,9 @@ export async function pbGet<T>(
   });
   const res = await fetch(url, {
     headers: { ...getAuthHeaders() },
-    next: { revalidate: opts.revalidateSeconds ?? 60 }
+    ...(opts.noStore
+      ? { cache: "no-store" as const }
+      : { next: { revalidate: opts.revalidateSeconds ?? 60 } })
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

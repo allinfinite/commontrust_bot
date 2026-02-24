@@ -18,7 +18,7 @@ Reputation system for Telegram communities. Build trust through verified deals, 
 - `/deal` (reply) `description` — Create a new deal in a group
 - `/confirm deal_id` — Confirm a pending deal
 - `/complete deal_id` — Mark a deal as completed
-- `/review deal_id rating(1-5) [comment]` — Review a completed deal
+- `/review deal_id [rating(1-5)] [comment]` — Review a completed deal
 
 **Reports**
 - `/report @username` — Report a scammer (evidence collected in DM)

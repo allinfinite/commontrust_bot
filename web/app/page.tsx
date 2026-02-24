@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { pbList } from "@/lib/pocketbase";
+import { filterPublicReviews } from "@/lib/review_visibility";
 import type { ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
@@ -11,10 +12,11 @@ export default async function HomePage() {
     perPage: 20,
     sort: "-created_at",
     expand: "reviewer_id,reviewee_id,deal_id",
-    revalidateSeconds: 60
+    noStore: true
   })
     .then((v) => ({ ok: true as const, value: v }))
     .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
+  const visibleReviews = reviewsRes.ok ? await filterPublicReviews(reviewsRes.value.items, true) : [];
 
   return (
     <>
@@ -36,7 +38,7 @@ export default async function HomePage() {
             {reviewsRes.ok ? (
               <>
                 <span className="homeMetaItem">
-                  Total filings: <span className="mono">{reviewsRes.value.totalItems.toLocaleString("en-US")}</span>
+                  Visible now: <span className="mono">{visibleReviews.length.toLocaleString("en-US")}</span>
                 </span>
                 <span className="homeMetaDot" aria-hidden>
                   •
@@ -76,7 +78,7 @@ export default async function HomePage() {
               <h2 className="sectionTitle">Latest filings</h2>
               <div className="sectionTools">
                 <span className="pill">
-                  Total: <span className="mono">{reviewsRes.value.totalItems.toLocaleString("en-US")}</span>
+                  Visible: <span className="mono">{visibleReviews.length.toLocaleString("en-US")}</span>
                 </span>
                 <Link className="pill" href="/reviews">
                   Open archive
@@ -85,7 +87,7 @@ export default async function HomePage() {
             </div>
 
             <div className="ledger" role="list">
-              {reviewsRes.value.items.map((r) => {
+              {visibleReviews.map((r) => {
                 const reviewer = r.expand?.reviewer_id;
                 const reviewee = r.expand?.reviewee_id;
                 const deal = r.expand?.deal_id;

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { pbGet } from "@/lib/pocketbase";
 import { pbAdminGet } from "@/lib/pocketbase_admin";
+import { filterPublicReviews } from "@/lib/review_visibility";
 import type { ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
@@ -14,7 +15,7 @@ async function fetchReview(id: string): Promise<ReviewRecord | null> {
   try {
     r = await pbGet<ReviewRecord>("reviews", id, {
       expand: "reviewer_id,reviewee_id,deal_id",
-      revalidateSeconds: 60,
+      noStore: true,
     });
   } catch {
     // Fall through
@@ -26,7 +27,9 @@ async function fetchReview(id: string): Promise<ReviewRecord | null> {
       // Not found
     }
   }
-  return r;
+  if (!r) return null;
+  const visible = await filterPublicReviews([r], true);
+  return visible.length > 0 ? r : null;
 }
 
 export async function generateMetadata(

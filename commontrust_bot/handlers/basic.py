@@ -69,7 +69,7 @@ async def cmd_help(message: Message) -> None:
 /deal (reply) description - Create a new deal
 /confirm deal_id - Confirm a pending deal
 /complete deal_id - Mark a deal as completed
-/review deal_id rating(1-5) [comment] - Review a completed deal
+/review deal_id [rating(1-5)] [comment] - Review a completed deal
 
 <b>Reports</b>
 /report @username - Report a scammer (evidence collected in DM)

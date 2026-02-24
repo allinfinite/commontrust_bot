@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { escapePbString, pbGet, pbList } from "@/lib/pocketbase";
 import { pbAdminGet } from "@/lib/pocketbase_admin";
+import { getPublicDealIdsForReviews } from "@/lib/review_visibility";
 import type { DealRecord, ReviewRecord } from "@/lib/types";
 import { formatDate, memberHref, memberLabel, stars } from "@/lib/ui";
 
@@ -16,7 +17,7 @@ export async function generateMetadata(
   const dealId = id.trim();
   let deal: DealRecord | null = null;
   try {
-    deal = await pbGet<DealRecord>("deals", dealId, { revalidateSeconds: 60 });
+    deal = await pbGet<DealRecord>("deals", dealId, { noStore: true });
   } catch {
     // fall through
   }
@@ -43,14 +44,6 @@ export async function generateMetadata(
   };
 }
 
-function isFullyReviewed(reviews: ReviewRecord[]): boolean {
-  const reviewers = new Set<string>();
-  for (const r of reviews) {
-    if (r.reviewer_id) reviewers.add(r.reviewer_id);
-  }
-  return reviewers.size >= 2;
-}
-
 export default async function DealPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const dealId = id.trim();
@@ -59,7 +52,7 @@ export default async function DealPage(props: { params: Promise<{ id: string }> 
   let deal: DealRecord | null = null;
   try {
     deal = await pbGet<DealRecord>("deals", dealId, {
-      revalidateSeconds: 60
+      noStore: true
     });
   } catch {
     // Fall through to admin-token fallback below.
@@ -78,10 +71,11 @@ export default async function DealPage(props: { params: Promise<{ id: string }> 
     sort: "-created_at",
     filter: `deal_id='${escapePbString(dealId)}'`,
     expand: "reviewer_id,reviewee_id,deal_id",
-    revalidateSeconds: 60
+    noStore: true
   });
 
-  const visible = isFullyReviewed(reviews.items);
+  const publicDealIds = await getPublicDealIdsForReviews(reviews.items, true);
+  const visible = publicDealIds.has(dealId);
 
   return (
     <>
@@ -118,7 +112,7 @@ export default async function DealPage(props: { params: Promise<{ id: string }> 
         <div className="card" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>Not public yet</div>
           <div className="muted" style={{ marginTop: 6 }}>
-            Reviews only appear after both parties have reviewed the deal.
+            Reviews appear only after both parties review and the 20-minute edit window ends.
           </div>
         </div>
       ) : (

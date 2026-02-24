@@ -136,6 +136,16 @@
         "values": ["pending", "confirmed", "in_progress", "completed", "cancelled", "disputed"]
       },
       {
+        "name": "reviews_publish_at",
+        "type": "datetime",
+        "required": false
+      },
+      {
+        "name": "reviews_window_resets_used",
+        "type": "number",
+        "required": false
+      },
+      {
         "name": "created_at",
         "type": "autodate",
         "required": false,

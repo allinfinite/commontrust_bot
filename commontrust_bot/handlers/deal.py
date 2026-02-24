@@ -19,6 +19,16 @@ def _relation_id(value: object) -> str | None:
     return None
 
 
+def _window_note(result: dict) -> str | None:
+    if bool(result.get("deal_is_public")):
+        return None
+    seconds = result.get("seconds_until_lock")
+    if not isinstance(seconds, int):
+        return None
+    minutes = max(1, (seconds + 59) // 60)
+    return f"Reviews will go public in about {minutes} minute(s). You can edit until then."
+
+
 def parse_mention(text: str) -> int | None:
     if text.startswith("@"):
         return text[1:]
@@ -125,7 +135,7 @@ async def cmd_complete(message: Message) -> None:
             f"Deal completed!\n\n"
             f"<b>Deal ID:</b> {deal_id}\n"
             f"<b>Status:</b> Completed\n\n"
-            f"Both parties can now leave a review with /review {deal_id} rating(1-5) [comment]",
+            f"Both parties can now leave a review with /review {deal_id} [rating(1-5)] [comment]",
             parse_mode="HTML",
         )
 
@@ -225,6 +235,9 @@ async def cmd_review(message: Message) -> None:
             await message.answer("Review updated.")
         else:
             await message.answer("Review submitted.")
+        note = _window_note(result)
+        if note:
+            await message.answer(note)
         # Best-effort DM to reviewee with a website response link.
         bot = getattr(message, "bot", None)
         if bot is not None and bool(result.get("deal_just_fully_reviewed")):
@@ -253,6 +266,9 @@ async def cmd_review(message: Message) -> None:
             except Exception:
                 pass
     except ValueError as e:
+        if "locked" in str(e).lower():
+            await message.answer("Review is locked (edit window ended).")
+            return
         await message.answer(f"Failed to submit review: {e}")
     except Exception as e:
         await message.answer(f"Error: {e}")

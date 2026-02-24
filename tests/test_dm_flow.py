@@ -1,5 +1,6 @@
 import pytest
 from typing import Any
+from datetime import datetime, timedelta, timezone
 
 from commontrust_bot.handlers import dm as dm_handlers
 from aiogram.dispatcher.event.bases import SkipHandler
@@ -184,3 +185,43 @@ async def test_clicking_different_star_updates_existing_review(monkeypatch) -> N
     assert review["rating"] == 5
     assert review["comment"] == "initial"
     assert "Rating updated." in query.answers[-1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_clicking_star_after_lock_is_blocked(monkeypatch) -> None:
+    pb = FakePocketBase()
+    rep = ReputationService(pb=pb)
+    deals = DealService(pb=pb, reputation=rep)
+    monkeypatch.setattr(dm_handlers, "deal_service", deals)
+
+    created = await deals.create_deal(
+        initiator_telegram_id=1,
+        counterparty_telegram_id=2,
+        group_telegram_id=100,
+        description="x",
+    )
+    deal_id = created["deal"]["id"]
+    await deals.confirm_deal(deal_id, confirmer_telegram_id=2)
+    await deals.complete_deal(deal_id, completer_telegram_id=1)
+    await deals.create_review(deal_id, reviewer_telegram_id=1, rating=2, comment="initial")
+    await deals.create_review(deal_id, reviewer_telegram_id=2, rating=5, comment="ok")
+    await pb.update_record(
+        "deals",
+        deal_id,
+        {"reviews_publish_at": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()},
+    )
+
+    callback_message = FakeMessage(
+        text="pick rating",
+        from_user=FakeUser(1, "u1", "U1"),
+        chat=FakeChat(1, "private"),
+    )
+    query = _FakeCallbackQuery(
+        data=f"review:{deal_id}:4",
+        from_user=FakeUser(1, "u1", "U1"),
+        message=callback_message,
+    )
+
+    await dm_handlers.cb_review_rating(query)  # type: ignore[arg-type]
+    assert "Review locked." in query.answers[-1]["text"]
+    assert "Review is locked" in callback_message.answers[-1]["text"]

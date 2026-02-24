@@ -34,6 +34,16 @@ def _relation_id(value: object) -> str | None:
     return None
 
 
+def _window_note(result: dict) -> str | None:
+    if bool(result.get("deal_is_public")):
+        return None
+    seconds = result.get("seconds_until_lock")
+    if not isinstance(seconds, int):
+        return None
+    minutes = max(1, (seconds + 59) // 60)
+    return f"Reviews will go public in about {minutes} minute(s). You can edit until then."
+
+
 async def _bot_username(message: Message) -> str:
     me = await message.bot.get_me()
     if not me.username:
@@ -215,6 +225,16 @@ async def cb_review_rating(query: CallbackQuery) -> None:
                 "Send an optional comment now, or type /skip to submit without a comment.",
                 parse_mode="HTML",
             )
+        note = _window_note(result)
+        if note:
+            await query.message.answer(note)
+    except ValueError as e:
+        if "locked" in str(e).lower():
+            await query.answer("Review locked.", show_alert=True)
+            await query.message.answer("Review is locked (edit window ended).")
+            return
+        await query.answer("Failed to save rating.", show_alert=True)
+        await query.message.answer(f"Failed to submit review: {e}")
     except Exception as e:
         await query.answer("Failed to save rating.", show_alert=True)
         await query.message.answer(f"Failed to submit review: {e}")
@@ -242,7 +262,7 @@ async def cb_deal_complete(query: CallbackQuery) -> None:
         await query.message.answer(
             "Deal completed.\n\n"
             f"<b>Deal ID:</b> <code>{html.quote(deal_id)}</code>\n\n"
-            "Reviews are private until both parties submit them.",
+            "Reviews are private until both parties submit them, then publish after a 20-minute edit window.",
             parse_mode="HTML",
         )
         try:
@@ -373,6 +393,9 @@ async def maybe_capture_review_comment(message: Message) -> None:
             await message.answer("Review updated.")
         else:
             await message.answer("Review submitted.")
+        note = _window_note(result)
+        if note:
+            await message.answer(note)
         bot = getattr(message, "bot", None)
         if bot is not None and bool(result.get("deal_just_fully_reviewed")):
             await maybe_dm_reviewee_with_respond_link(bot, result=result)
@@ -399,5 +422,11 @@ async def maybe_capture_review_comment(message: Message) -> None:
                         await maybe_dm_reviewee_with_respond_link(bot, result=incoming_result)
             except Exception:
                 pass
+    except ValueError as e:
+        if "locked" in str(e).lower():
+            _PENDING_REVIEW_COMMENT.pop(message.from_user.id, None)
+            await message.answer("Review is locked (edit window ended).")
+            return
+        await message.answer(f"Failed to submit review: {e}")
     except Exception as e:
         await message.answer(f"Failed to submit review: {e}")

@@ -29,6 +29,9 @@ class Settings(BaseSettings):
 
     credit_base_limit: int = Field(default=100, description="Base credit limit for new members")
     credit_per_deal: int = Field(default=50, description="Credit limit increase per verified deal")
+    review_edit_window_minutes: int = Field(
+        default=20, description="Minutes after both reviews are submitted during which edits are allowed"
+    )
 
     commontrust_web_url: str = Field(
         default="",
